@@ -1,0 +1,63 @@
+{
+  "expo": {
+    "name": "Mukurtham Matrimony",
+    "slug": "mukurtham-matrimony",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/logo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#e0136a"
+    },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Mukurtham needs access to your photos so you can add profile pictures."
+        }
+      ],
+      "expo-font"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "ca.mukurtham.app",
+      "config": {
+        "usesNonExemptEncryption": false
+      },
+      "infoPlist": {
+        "NSCameraUsageDescription": "Mukurtham needs camera access to take profile photos.",
+        "NSPhotoLibraryUsageDescription": "Mukurtham needs photo library access to select profile photos."
+      }
+    },
+    "android": {
+      "package": "ca.mukurtham.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#fff0f5",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "softwareKeyboardLayoutMode": "resize",
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.VIBRATE",
+        "android.permission.RECORD_AUDIO"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "007476e3-ddbb-4f3d-a22f-1e8563251cc2"
+      }
+    },
+    "owner": "jathu200304"
+  }
+}

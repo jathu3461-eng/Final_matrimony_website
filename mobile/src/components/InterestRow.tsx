@@ -1,0 +1,216 @@
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { uploadsUrl } from '@/api/client';
+import { interestApi } from '@/api/interests';
+import { useTheme } from '@/theme';
+import { radius, spacing, typography } from '@/theme';
+import type { Interest } from '@/types';
+
+interface InterestRowProps {
+  interest: Interest;
+  direction: 'received' | 'sent';
+  onPress?: () => void;
+  onResponded?: () => void;
+  onSendMessage?: () => void;
+}
+
+export function InterestRow({ interest, direction, onPress, onResponded, onSendMessage }: InterestRowProps) {
+  const { colors } = useTheme();
+  const otherName = direction === 'received' ? interest.sender_name : interest.receiver_name;
+  const otherPic = direction === 'received' ? interest.sender_pic : interest.receiver_pic;
+
+  const STATUS_LABEL: Record<string, { text: string; color: string }> = {
+    pending: { text: 'Pending', color: colors.warning },
+    accepted: { text: 'Accepted', color: colors.success },
+    rejected: { text: 'Declined', color: colors.error },
+    declined: { text: 'Declined', color: colors.error },
+  };
+  const status = STATUS_LABEL[interest.status];
+
+  if (interest.status === 'accepted') {
+    return (
+      <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <Pressable onPress={onPress} style={({ pressed }) => [styles.cardTop, pressed && styles.pressed]}>
+          {otherPic ? (
+            <Image source={{ uri: uploadsUrl(otherPic) }} style={[styles.avatar, { backgroundColor: colors.primarySoft }]} />
+          ) : (
+            <View style={[styles.avatar, styles.avatarPlaceholder, { backgroundColor: colors.primarySoft }]}>
+              <Ionicons name="person" size={22} color={colors.inkFaint} />
+            </View>
+          )}
+          <View style={styles.details}>
+            <Text style={[styles.name, { color: colors.ink }]}>{otherName ?? 'Profile'}</Text>
+            <Text style={[styles.statusAccepted, { color: colors.success }]}>Accepted</Text>
+            {interest.occupation ? (
+              <Text style={[styles.meta, { color: colors.inkFaint }]}>{interest.occupation}</Text>
+            ) : null}
+          </View>
+        </Pressable>
+        <Pressable
+          onPress={onSendMessage}
+          style={[styles.sendBtn, { backgroundColor: colors.surface, borderColor: colors.primary }]}
+        >
+          <Ionicons name="chatbubble" size={16} color={colors.primary} />
+          <Text style={[styles.sendBtnText, { color: colors.primary }]}>Send Message</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.row,
+        { backgroundColor: colors.surface, borderColor: colors.border },
+        pressed && styles.pressed,
+      ]}
+    >
+      {otherPic ? (
+        <Image source={{ uri: uploadsUrl(otherPic) }} style={[styles.avatar, { backgroundColor: colors.primarySoft }]} />
+      ) : (
+        <View style={[styles.avatar, styles.avatarPlaceholder, { backgroundColor: colors.primarySoft }]}>
+          <Ionicons name="person" size={22} color={colors.inkFaint} />
+        </View>
+      )}
+
+      <View style={styles.details}>
+        <Text style={[styles.name, { color: colors.ink }]}>{otherName ?? 'Profile'}</Text>
+        <Text style={[styles.message, { color: colors.inkSoft }]} numberOfLines={1}>
+          {interest.message ||
+            (direction === 'received' ? 'Sent you an interest' : 'You sent an interest')}
+        </Text>
+        {interest.occupation ? (
+          <Text style={[styles.meta, { color: colors.inkFaint }]}>{interest.occupation}</Text>
+        ) : null}
+      </View>
+
+      {interest.status === 'pending' && direction === 'received' ? (
+        <View style={styles.actions}>
+          <Pressable
+            onPress={async () => {
+              await interestApi.respond(interest.id, 'accepted');
+              onResponded?.();
+            }}
+            style={[styles.acceptBtn, { backgroundColor: colors.successSoft }]}
+          >
+            <Ionicons name="checkmark" size={18} color={colors.success} />
+          </Pressable>
+          <Pressable
+            onPress={async () => {
+              await interestApi.respond(interest.id, 'rejected');
+              onResponded?.();
+            }}
+            style={[styles.rejectBtn, { backgroundColor: colors.errorSoft }]}
+          >
+            <Ionicons name="close" size={18} color={colors.error} />
+          </Pressable>
+        </View>
+      ) : (
+        status && <Text style={[styles.status, { color: status.color }]}>{status.text}</Text>
+      )}
+    </Pressable>
+  );
+}
+
+const styles = StyleSheet.create({
+  card: {
+    borderRadius: radius.md,
+    borderWidth: 1,
+    marginBottom: spacing.sm,
+    overflow: 'hidden',
+  },
+  cardTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.md,
+    gap: spacing.md,
+  },
+  sendBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#e7e5e4',
+    paddingVertical: 14,
+  },
+  sendBtnText: {
+    ...typography.body,
+    fontWeight: '700',
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: radius.md,
+    borderWidth: 1,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    gap: spacing.md,
+  },
+  pressed: {
+    opacity: 0.9,
+  },
+  avatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+  },
+  avatarPlaceholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  details: {
+    flex: 1,
+  },
+  name: {
+    ...typography.body,
+    fontWeight: '700',
+  },
+  message: {
+    ...typography.caption,
+    marginTop: 2,
+  },
+  meta: {
+    ...typography.label,
+    marginTop: 2,
+  },
+  statusAccepted: {
+    ...typography.label,
+    fontWeight: '700',
+  },
+  status: {
+    ...typography.label,
+    fontWeight: '700',
+  },
+  actions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  acceptBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rejectBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  viewBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    borderRadius: radius.pill,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  viewBtnText: {
+    ...typography.label,
+    fontWeight: '700',
+  },
+});

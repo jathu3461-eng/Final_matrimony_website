@@ -1,0 +1,115 @@
+name: 🚀 Deploy Mukurtham to cPanel
+
+on:
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  # ─────────────────────────────────────────────────
+  # JOB 1: Build & FTP Deploy FRONTEND → public_html
+  # ─────────────────────────────────────────────────
+  deploy-frontend:
+    name: 🌐 Build + SCP Deploy Frontend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: ⬇️ Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: matrimony-app/frontend/package-lock.json
+
+      - name: 📦 Install frontend dependencies
+        working-directory: matrimony-app/frontend
+        run: npm ci
+
+      - name: 🏗️ Build Vite production bundle
+        working-directory: matrimony-app/frontend
+        env:
+          VITE_API_URL: https://api.mukurtham.ca/api
+        run: npm run build
+
+      - name: 📁 Add .htaccess for React Router
+        run: |
+          cat > matrimony-app/frontend/dist/.htaccess << 'EOF'
+          Options -MultiViews
+          RewriteEngine On
+          RewriteCond %{REQUEST_FILENAME} !-f
+          RewriteRule ^ index.html [QSA,L]
+          Header set Cache-Control "no-cache, no-store, must-revalidate" "expr:%{REQUEST_URI} =~ /index\.html$/"
+          EOF
+
+      - name: 📦 Create deployment archive
+        run: cd matrimony-app/frontend/dist && tar czf /tmp/frontend.tar.gz .
+
+      - name: 🚀 Upload frontend archive via SCP
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          port: 21098
+          source: "/tmp/frontend.tar.gz"
+          target: "/tmp/"
+
+      - name: 🚀 Extract and deploy frontend
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          port: 21098
+          script: |
+            echo "🚀 Deploying frontend to /public_html/..."
+            cd /public_html
+            rm -f index.html .htaccess favicon.png
+            rm -rf assets
+            tar xzf /tmp/frontend.tar.gz
+            rm /tmp/frontend.tar.gz
+            echo "✅ Frontend deployed successfully"
+
+  # ─────────────────────────────────────────────────
+  # JOB 2: SSH Deploy BACKEND → /home/mukutmzw/mukurtham-backend
+  # ─────────────────────────────────────────────────
+  deploy-backend:
+    name: 🖥️ SSH Deploy Backend
+    runs-on: ubuntu-latest
+    needs: deploy-frontend
+
+    steps:
+      - name: 🔐 SSH into cPanel & Deploy Backend
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          port: 21098
+          script: |
+            echo "🚀 Starting Mukurtham backend deployment..."
+
+            mkdir -p ~/mukurtham-backend
+            cd ~/mukurtham-backend
+
+            # Always pull full repo then copy backend files to root
+            echo "📦 Syncing code..."
+            rm -rf _deploy_tmp
+            git clone --depth 1 https://github.com/jathu3461-eng/Matriomny.git _deploy_tmp
+
+            # Copy backend files to app root (preserving uploads/ and data/ if they exist)
+            rsync -av --exclude='node_modules' --exclude='.git' --exclude='uploads' --exclude='data' _deploy_tmp/matrimony-app/backend/ ./
+            rm -rf _deploy_tmp
+
+            # Install production dependencies
+            echo "📦 Installing dependencies..."
+            npm ci --omit=dev
+
+            # Restart via cPanel Passenger
+            mkdir -p tmp && touch tmp/restart.txt
+
+            echo "✅ Backend deployed successfully at https://mukurtham.ca/api"
