@@ -1,8 +1,12 @@
 name: Mukurtham cPanel CI/CD Pipeline
 
+# This workflow is disabled - deploy.yml handles all deployments
 on:
-  push:
-    branches: [main, develop]
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'This workflow is disabled. Use deploy.yml instead.'
+        required: false
 
 permissions:
   contents: read
