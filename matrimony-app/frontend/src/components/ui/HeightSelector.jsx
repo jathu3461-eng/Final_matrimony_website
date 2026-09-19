@@ -1,7 +1,120 @@
-import React, { useState, useEffect } from 'react';
-import SelectField from './SelectField';
-import TextField from './TextField';
+import React, { useState, useEffect, useRef } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { cmToFtIn, ftInToCm } from '../../lib/height';
+
+function SearchableCombobox({
+  label,
+  options = [],
+  value,
+  onChange,
+  placeholder = 'Type to search...',
+  unitLabel = '',
+  error
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const wrapperRef = useRef(null);
+
+  // Sync internal search query when value changes from outside
+  useEffect(() => {
+    if (value !== undefined && value !== null && value !== '') {
+      const found = options.find((o) => o.value === String(value));
+      if (found) {
+        setQuery(found.label);
+      } else {
+        setQuery(unitLabel ? `${value} ${unitLabel}` : String(value));
+      }
+    } else {
+      setQuery('');
+    }
+  }, [value, options, unitLabel]);
+
+  // Handle clicking outside to close dropdown
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Filter options based on user input
+  const cleanQuery = query.toLowerCase().trim();
+  const filteredOptions = options.filter((o) => {
+    if (!cleanQuery) return true;
+    const cleanLabel = o.label.toLowerCase();
+    const cleanVal = o.value.toLowerCase();
+    return cleanLabel.includes(cleanQuery) || cleanVal.includes(cleanQuery);
+  });
+
+  const handleInputChange = (e) => {
+    const val = e.target.value;
+    setQuery(val);
+    setIsOpen(true);
+
+    const match = val.match(/\d+/);
+    if (match) {
+      onChange(match[0]);
+    } else if (!val.trim()) {
+      onChange('');
+    }
+  };
+
+  const handleSelectOption = (opt) => {
+    setQuery(opt.label);
+    onChange(opt.value);
+    setIsOpen(false);
+  };
+
+  return (
+    <div ref={wrapperRef} className="relative flex flex-col gap-1.5 w-full">
+      {label && (
+        <label className="block text-xs font-bold text-[var(--ink-soft)]">
+          {label}
+        </label>
+      )}
+      <div className="relative group">
+        <input
+          type="text"
+          className={`input-base pr-10 ${error ? 'input-error' : ''}`}
+          placeholder={placeholder}
+          value={query}
+          onFocus={() => setIsOpen(true)}
+          onChange={handleInputChange}
+        />
+        <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-[var(--ink-faint)] group-focus-within:text-[var(--primary)] transition-colors">
+          <ChevronDown className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        </span>
+      </div>
+
+      {/* Filtered Search Dropdown */}
+      {isOpen && (
+        <ul className="absolute left-0 right-0 top-full mt-1 max-h-56 overflow-y-auto bg-white border border-[var(--border)] rounded-xl shadow-lg z-50 py-1 text-xs">
+          {filteredOptions.length > 0 ? (
+            filteredOptions.map((opt) => (
+              <li
+                key={opt.value}
+                onClick={() => handleSelectOption(opt)}
+                className={`px-3.5 py-2 cursor-pointer hover:bg-[var(--primary-soft)] hover:text-[var(--primary)] font-medium transition-colors ${
+                  String(value) === opt.value ? 'bg-[var(--primary-soft)] text-[var(--primary)] font-bold' : 'text-[var(--ink)]'
+                }`}
+              >
+                {opt.label}
+              </li>
+            ))
+          ) : (
+            <li className="px-3.5 py-2.5 text-[var(--ink-faint)] italic">
+              No matching height. Custom value will be saved.
+            </li>
+          )}
+        </ul>
+      )}
+      {error && <span className="text-[11px] font-semibold text-[var(--error)] mt-0.5">{error}</span>}
+    </div>
+  );
+}
 
 export default function HeightSelector({
   feetValue,
@@ -10,7 +123,7 @@ export default function HeightSelector({
   errorFeet,
   errorInches
 }) {
-  const [unit, setUnit] = useState('cm'); // 'cm' or 'ft'
+  const [unit, setUnit] = useState('cm');
   const [cmValue, setCmValue] = useState('');
 
   // Sync internal CM value when props change
@@ -26,11 +139,10 @@ export default function HeightSelector({
     setUnit(newUnit);
   };
 
-  const handleCmChange = (e) => {
-    const val = e.target.value;
-    setCmValue(val);
-    const num = Number(val);
-    if (val && !isNaN(num) && num > 0) {
+  const handleCmChange = (valStr) => {
+    setCmValue(valStr);
+    const num = Number(valStr);
+    if (valStr && !isNaN(num) && num > 0) {
       const { feet, inches } = cmToFtIn(num);
       onChange({ feet: String(feet), inches: String(inches) });
     } else {
@@ -38,23 +150,21 @@ export default function HeightSelector({
     }
   };
 
-  const handleFtChange = (e) => {
-    const val = e.target.value;
-    onChange({ feet: val, inches: inchesValue || '0' });
+  const handleFtChange = (valStr) => {
+    onChange({ feet: valStr, inches: inchesValue || '0' });
   };
 
-  const handleInChange = (e) => {
-    const val = e.target.value;
-    onChange({ feet: feetValue || '5', inches: val });
+  const handleInChange = (valStr) => {
+    onChange({ feet: feetValue || '5', inches: valStr });
   };
 
-  // Generate CM options (120 - 220)
-  const cmOptions = Array.from({ length: 101 }, (_, i) => 120 + i).map((n) => ({
+  // Generate CM options (90 - 230)
+  const cmOptions = Array.from({ length: 141 }, (_, i) => 90 + i).map((n) => ({
     value: String(n),
     label: `${n} cm`,
   }));
 
-  // Generate Ft options (4 - 7)
+  // Generate Ft options (3 - 7)
   const ftOptions = [3, 4, 5, 6, 7].map((n) => ({
     value: String(n),
     label: `${n} ft`,
@@ -101,73 +211,35 @@ export default function HeightSelector({
 
       {/* Fields */}
       {unit === 'cm' ? (
-        <div className="flex flex-col gap-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <TextField
-              label="Type Height (cm)"
-              type="number"
-              min="90"
-              max="250"
-              placeholder="e.g. 168"
-              value={cmValue}
-              onChange={handleCmChange}
-              floating={false}
-              error={errorFeet || errorInches}
-              right={
-                <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-[var(--ink-faint)] pointer-events-none">
-                  cm
-                </span>
-              }
-            />
-            <SelectField
-              label="Or Select from List"
-              options={cmOptions}
-              value={cmValue}
-              onChange={handleCmChange}
-              error={errorFeet || errorInches}
-            />
-          </div>
-        </div>
+        <SearchableCombobox
+          label="Height (cm)"
+          placeholder="Type e.g. 12 (filters 120cm, 121cm...) or 168 cm"
+          options={cmOptions}
+          value={cmValue}
+          unitLabel="cm"
+          onChange={handleCmChange}
+          error={errorFeet || errorInches}
+        />
       ) : (
-        <div className="flex flex-col gap-3">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex flex-col gap-1.5">
-              <SelectField
-                label="Height (Feet)"
-                options={ftOptions}
-                value={feetValue}
-                onChange={handleFtChange}
-                error={errorFeet}
-              />
-              <input
-                type="number"
-                min="3"
-                max="8"
-                placeholder="Type feet (e.g. 5)"
-                value={feetValue}
-                onChange={handleFtChange}
-                className="input-base text-xs py-1.5 px-3"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <SelectField
-                label="Height (Inches)"
-                options={inOptions}
-                value={inchesValue}
-                onChange={handleInChange}
-                error={errorInches}
-              />
-              <input
-                type="number"
-                min="0"
-                max="11"
-                placeholder="Type inches (e.g. 6)"
-                value={inchesValue}
-                onChange={handleInChange}
-                className="input-base text-xs py-1.5 px-3"
-              />
-            </div>
-          </div>
+        <div className="grid grid-cols-2 gap-4">
+          <SearchableCombobox
+            label="Height (Feet)"
+            placeholder="Search feet..."
+            options={ftOptions}
+            value={feetValue}
+            unitLabel="ft"
+            onChange={handleFtChange}
+            error={errorFeet}
+          />
+          <SearchableCombobox
+            label="Height (Inches)"
+            placeholder="Search inches..."
+            options={inOptions}
+            value={inchesValue}
+            unitLabel="in"
+            onChange={handleInChange}
+            error={errorInches}
+          />
         </div>
       )}
 
@@ -183,4 +255,3 @@ export default function HeightSelector({
     </div>
   );
 }
-
