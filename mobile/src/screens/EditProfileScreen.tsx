@@ -261,7 +261,7 @@ export function EditProfileScreen() {
             >
               <Ionicons name="person" size={16} color={form.gender === 'M' ? colors.white : colors.inkSoft} />
               <Text style={[styles.genderBtnText, { color: form.gender === 'M' ? colors.white : colors.inkSoft }]}>
-                Groom
+                Male
               </Text>
             </Pressable>
             <Pressable
@@ -276,7 +276,7 @@ export function EditProfileScreen() {
             >
               <Ionicons name="people" size={16} color={form.gender === 'F' ? colors.white : colors.inkSoft} />
               <Text style={[styles.genderBtnText, { color: form.gender === 'F' ? colors.white : colors.inkSoft }]}>
-                Bride
+                Female
               </Text>
             </Pressable>
           </View>

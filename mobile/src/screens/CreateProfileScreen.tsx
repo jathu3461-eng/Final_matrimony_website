@@ -246,7 +246,7 @@ export function CreateProfileScreen() {
                     { color: form.gender === 'M' ? colors.white : colors.inkSoft },
                   ]}
                 >
-                  Groom
+                  Male
                 </Text>
               </Pressable>
               <Pressable
@@ -270,7 +270,7 @@ export function CreateProfileScreen() {
                     { color: form.gender === 'F' ? colors.white : colors.inkSoft },
                   ]}
                 >
-                  Bride
+                  Female
                 </Text>
               </Pressable>
             </View>
