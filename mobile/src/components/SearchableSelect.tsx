@@ -185,12 +185,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   container: {
-    marginBottom: spacing.md,
+    marginBottom: spacing.fieldGap,
   },
   label: {
     ...typography.caption,
-    fontWeight: '600',
-    marginBottom: spacing.xs,
+    fontWeight: '700',
+    marginBottom: spacing.sm,
+    letterSpacing: 0.2,
   },
   field: {
     flexDirection: 'row',
@@ -199,7 +200,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderRadius: radius.md,
     paddingHorizontal: spacing.md,
-    paddingVertical: 12,
+    paddingVertical: 14,
   },
   value: {
     flex: 1,
@@ -222,14 +223,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: spacing.md,
+    padding: spacing.lg,
     borderBottomWidth: 1,
   },
   modalTitle: {
     ...typography.h3,
   },
   searchContainer: {
-    padding: spacing.md,
+    padding: spacing.lg,
   },
   searchInputWrapper: {
     flexDirection: 'row',
@@ -237,7 +238,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     borderWidth: 1,
     borderRadius: radius.md,
-    height: 40,
+    height: 44,
     gap: 8,
   },
   searchInput: {

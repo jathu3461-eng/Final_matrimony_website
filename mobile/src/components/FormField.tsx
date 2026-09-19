@@ -100,12 +100,13 @@ export function FormField({
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: spacing.md,
+    marginBottom: spacing.fieldGap,
   },
   label: {
     ...typography.caption,
-    fontWeight: '600',
-    marginBottom: spacing.xs,
+    fontWeight: '700',
+    marginBottom: spacing.sm,
+    letterSpacing: 0.2,
   },
   field: {
     flexDirection: 'row',
@@ -116,7 +117,7 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: 14,
     fontSize: typography.body.fontSize,
   },
   eye: {

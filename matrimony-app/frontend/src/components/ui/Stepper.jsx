@@ -7,15 +7,15 @@ import { Check } from 'lucide-react';
 export default function Stepper({ steps = [], current = 0, onStepClick, vertical = false }) {
   if (vertical) {
     return (
-      <ol className="flex flex-col gap-0" aria-label="Progress">
+      <ol className="flex flex-col" aria-label="Progress">
         {steps.map((s, i) => {
           const state = i < current ? 'complete' : i === current ? 'current' : 'upcoming';
           const clickable = onStepClick && (i < current || i === current);
           return (
-            <li key={s.label} className="relative flex items-start gap-3 pb-5 last:pb-0">
+            <li key={s.label} className="relative flex items-start gap-3.5 pb-6 last:pb-0">
               {i < steps.length - 1 && (
                 <span
-                  className={`absolute left-[11px] top-7 bottom-0 w-0.5 rounded-full ${i < current ? 'bg-[var(--primary)]' : 'bg-[var(--border-soft)]'}`}
+                  className={`absolute left-[13px] top-9 bottom-0 w-0.5 rounded-full transition-colors duration-300 ${i < current ? 'bg-[var(--primary)]' : 'bg-[var(--border-strong)]'}`}
                   aria-hidden="true"
                 />
               )}
@@ -23,7 +23,7 @@ export default function Stepper({ steps = [], current = 0, onStepClick, vertical
                 type="button"
                 onClick={() => clickable && onStepClick(i)}
                 disabled={!clickable}
-                className={`step-dot shrink-0 z-10 ${
+                className={`step-dot shrink-0 z-10 mt-0.5 ${
                   state === 'complete'
                     ? 'step-complete'
                     : state === 'current'
@@ -35,7 +35,7 @@ export default function Stepper({ steps = [], current = 0, onStepClick, vertical
               >
                 {state === 'complete' ? <Check className="w-4 h-4" aria-hidden="true" /> : i + 1}
               </button>
-              <div className="min-w-0 pt-0.5">
+              <div className="min-w-0 pt-1">
                 <p
                   className={`text-[13px] font-bold leading-tight ${
                     state === 'current' ? 'text-[var(--primary-strong)]' : state === 'complete' ? 'text-[var(--ink)]' : 'text-[var(--ink-faint)]'
@@ -44,7 +44,7 @@ export default function Stepper({ steps = [], current = 0, onStepClick, vertical
                   {s.label}
                 </p>
                 {s.hint && (
-                  <p className="text-[11px] text-[var(--ink-faint)] mt-0.5 leading-snug">{s.hint}</p>
+                  <p className="text-[11px] text-[var(--ink-faint)] mt-1 leading-snug">{s.hint}</p>
                 )}
               </div>
             </li>

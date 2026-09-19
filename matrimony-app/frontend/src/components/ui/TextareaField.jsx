@@ -26,7 +26,7 @@ const TextareaField = forwardRef(function TextareaField(
   return (
     <div className={className}>
       {label && (
-        <label htmlFor={inputId} className="block text-xs font-bold text-[var(--ink-soft)] mb-1.5">
+        <label htmlFor={inputId} className="block text-xs font-bold text-[var(--ink-soft)] mb-2 tracking-wide">
           {label}
           {required && <span className="text-[var(--error)]"> *</span>}
         </label>

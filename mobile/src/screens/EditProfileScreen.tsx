@@ -482,21 +482,21 @@ const sectionStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    marginTop: spacing.lg,
-    marginBottom: spacing.md,
-    paddingBottom: spacing.sm,
+    marginTop: spacing.xl,
+    marginBottom: spacing.lg,
+    paddingBottom: spacing.md,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   iconWrap: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
+    width: 32,
+    height: 32,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
   title: {
     ...typography.title,
-    fontSize: 16,
+    fontSize: 17,
   },
 });
 
@@ -509,8 +509,9 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
   },
   content: {
-    padding: spacing.md,
-    paddingBottom: layout.bottomContentInset,
+    paddingHorizontal: layout.screenHorizontalPadding,
+    paddingVertical: spacing.lg,
+    paddingBottom: layout.contentBottomPadding,
   },
   photoSection: {
     alignItems: 'center',
@@ -550,13 +551,14 @@ const styles = StyleSheet.create({
   },
   fieldLabel: {
     ...typography.caption,
-    fontWeight: '600',
-    marginBottom: spacing.xs,
+    fontWeight: '700',
+    marginBottom: spacing.sm,
+    letterSpacing: 0.2,
   },
   genderRow: {
     flexDirection: 'row',
     gap: spacing.sm,
-    marginBottom: spacing.md,
+    marginBottom: spacing.fieldGap,
   },
   genderBtn: {
     flex: 1,
@@ -566,7 +568,7 @@ const styles = StyleSheet.create({
     gap: 6,
     borderWidth: 2,
     borderRadius: radius.md,
-    paddingVertical: 12,
+    paddingVertical: 14,
   },
   genderBtnText: {
     fontSize: 14,
@@ -580,8 +582,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   bottomBar: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
+    paddingHorizontal: layout.screenHorizontalPadding,
+    paddingVertical: spacing.lg,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
 });

@@ -89,7 +89,7 @@ export default function SearchableSelect({
   return (
     <div ref={wrapperRef} className={`relative flex flex-col w-full ${className}`}>
       {label && (
-        <label htmlFor={inputId} className="block text-xs font-bold text-[var(--ink-soft)] mb-1.5">
+        <label htmlFor={inputId} className="block text-xs font-bold text-[var(--ink-soft)] mb-2 tracking-wide">
           {label}
           {required && <span className="text-[var(--error)]"> *</span>}
         </label>
@@ -110,7 +110,7 @@ export default function SearchableSelect({
           id={inputId}
           ref={inputRef}
           type="text"
-          className={`input-base pl-10 pr-16 ${stateClass} group-focus-within:border-[var(--primary)] text-ellipsis whitespace-nowrap overflow-hidden`}
+          className={`input-base pl-10 pr-16 min-h-[56px] ${stateClass} group-focus-within:border-[var(--primary)] text-ellipsis whitespace-nowrap overflow-hidden`}
           placeholder={placeholder}
           value={query}
           onFocus={() => setIsOpen(true)}
@@ -149,7 +149,7 @@ export default function SearchableSelect({
                   key={opt.value}
                   type="button"
                   onClick={() => handleSelectOption(opt)}
-                  className={`w-full text-left px-4 py-2.5 text-[13px] transition-colors flex items-center justify-between group/item ${
+                  className={`w-full text-left px-4 py-3 text-[13px] transition-colors flex items-center justify-between group/item ${
                     isSelected 
                       ? 'bg-[var(--primary-soft)] text-[var(--primary-strong)] font-bold' 
                       : 'text-[var(--ink)] hover:bg-[var(--surface-soft)] font-medium hover:text-[var(--primary)]'

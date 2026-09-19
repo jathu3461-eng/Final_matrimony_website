@@ -330,20 +330,20 @@ export default function ProfileWizard() {
   }
 
   return (
-    <div className="min-h-screen py-6 sm:py-10 px-4 grad-hero">
+    <div className="min-h-screen py-8 sm:py-12 px-4 sm:px-6 grad-hero">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
-            <p className="text-[11px] font-bold text-[var(--primary)] uppercase tracking-wider">
+            <p className="text-[11px] font-bold text-[var(--primary)] uppercase tracking-widest">
               {isEdit ? 'Edit Profile' : 'New Profile'} · Step {step + 1} of {profileSteps.length}
             </p>
-            <h1 className="font-display text-2xl font-extrabold text-[var(--ink)] mt-0.5">
+            <h1 className="font-display text-2xl sm:text-3xl font-extrabold text-[var(--ink)] mt-1">
               {isEdit ? 'Update your profile' : 'Tell us about yourself'}
             </h1>
           </div>
           <div className="flex items-center gap-3">
-            <div className="hidden sm:flex items-center gap-2 rounded-full px-3 py-1.5 border border-[var(--border)] bg-[var(--surface)]">
+            <div className="hidden sm:flex items-center gap-2 rounded-full px-4 py-2 border border-[var(--border)] bg-[var(--surface)] shadow-sm">
               <Save className="w-3.5 h-3.5 text-[var(--ink-faint)]" aria-hidden="true" />
               <span className="text-[11px] font-bold text-[var(--ink-soft)]">
                 {draftStatus || (isEdit ? 'Save to apply changes' : 'Autosave on')}
@@ -357,28 +357,32 @@ export default function ProfileWizard() {
           </div>
         </div>
 
-        <div className="grid lg:grid-cols-[300px_1fr] gap-6 items-start">
+        <div className="grid lg:grid-cols-[280px_1fr] gap-8 items-start">
           {/* ── Sidebar ── */}
           <div className="hidden lg:block">
-            <div className="glass-card p-6 sticky top-6">
-              <ProgressBar value={completion} className="mb-6" />
+            <div className="glass-card p-7 sticky top-8">
+              <div className="mb-6">
+                <p className="text-[10px] font-bold text-[var(--ink-faint)] uppercase tracking-widest mb-3">Profile completion</p>
+                <ProgressBar value={completion} />
+              </div>
               <Stepper vertical steps={stepperSteps} current={step} onStepClick={goToStep} />
             </div>
           </div>
 
           {/* ── Content ── */}
-          <div className="glass-card p-6 sm:p-8" ref={contentRef}>
+          <div className="glass-card p-7 sm:p-10" ref={contentRef}>
             {/* Mobile progress */}
-            <div className="lg:hidden mb-6">
-              <ProgressBar value={completion} className="mb-4" />
-              <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1">
+            <div className="lg:hidden mb-8">
+              <p className="text-[10px] font-bold text-[var(--ink-faint)] uppercase tracking-widest mb-2">Profile completion</p>
+              <ProgressBar value={completion} className="mb-5" />
+              <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-hide">
                 {stepperSteps.map((s, i) => (
                   <button
                     key={s.label}
                     type="button"
                     onClick={() => goToStep(i)}
                     aria-current={i === step ? 'step' : undefined}
-                    className={`shrink-0 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-bold border transition-all ${
+                    className={`shrink-0 flex items-center gap-2 rounded-full px-4 py-2 text-[11px] font-bold border transition-all ${
                       i === step
                         ? 'grad-primary text-white border-transparent shadow-md'
                         : i < maxReachable
@@ -386,7 +390,7 @@ export default function ProfileWizard() {
                           : 'border-[var(--border)] text-[var(--ink-faint)] bg-[var(--surface-soft)]'
                     }`}
                   >
-                    <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] ${i < step ? 'bg-white/25' : ''}`}>
+                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] shrink-0 ${i < step ? 'bg-white/25' : ''}`}>
                       {i < step ? <Check className="w-3 h-3" aria-hidden="true" /> : i + 1}
                     </span>
                     <span className="hidden sm:inline">{s.label}</span>
@@ -404,28 +408,31 @@ export default function ProfileWizard() {
                 transition={{ duration: 0.22 }}
               >
                 {/* Step heading */}
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-11 h-11 rounded-2xl grad-primary flex items-center justify-center text-white shadow-lg shrink-0">
-                    <StepIcon className="w-5 h-5" aria-hidden="true" />
+                <div className="flex items-center gap-4 mb-8 pb-6 border-b border-[var(--border)]">
+                  <div className="w-13 h-13 min-w-[3.25rem] min-h-[3.25rem] rounded-2xl grad-primary flex items-center justify-center text-white shadow-lg shrink-0">
+                    <StepIcon className="w-6 h-6" aria-hidden="true" />
                   </div>
                   <div>
-                    <p className="text-[11px] font-bold text-[var(--primary)] uppercase tracking-wider">
+                    <p className="text-[11px] font-bold text-[var(--primary)] uppercase tracking-widest">
                       {isEdit ? 'Edit' : 'Step'} {step + 1} of {profileSteps.length}
                     </p>
-                    <h2 className="font-display text-xl font-extrabold text-[var(--ink)] leading-tight">
+                    <h2 className="font-display text-xl sm:text-2xl font-extrabold text-[var(--ink)] leading-tight mt-0.5">
                       {profileSteps[step].title}
                     </h2>
+                    {profileSteps[step].hint && (
+                      <p className="text-[13px] text-[var(--ink-faint)] mt-1">{profileSteps[step].hint}</p>
+                    )}
                   </div>
                   {validSteps[step] && <Badge variant="success" className="ml-auto">Complete</Badge>}
                 </div>
 
                 {serverError && (
-                  <div className="mb-5">
+                  <div className="mb-6">
                     <ErrorCard message={serverError} onDismiss={() => setServerError('')} />
                   </div>
                 )}
 
-                <div className="space-y-4">
+                <div className="wizard-fields">
                   {step === 0 && (
                     <>
                       <SelectField
@@ -531,7 +538,7 @@ export default function ProfileWizard() {
                   {step === 3 && (
                     <>
                       <OptionSelect label="Dietary Preference" options={DIET_OPTIONS} value={form.diet} onChange={set('diet')} name="diet" />
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                         <OptionSelect label="Family Values" options={FAMILY_VALUES} value={form.family_values} onChange={set('family_values')} name="family_values" />
                         <OptionSelect label="Career Goals" options={CAREER_GOALS} value={form.career_goals} onChange={set('career_goals')} name="career_goals" />
                       </div>
@@ -540,7 +547,7 @@ export default function ProfileWizard() {
                   )}
 
                   {step === 4 && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                       <OptionSelect label="Annual Income Range" options={INCOME_RANGE} value={form.income_range} onChange={set('income_range')} name="income_range" />
                       <OptionSelect label="Manglik / Chevvai Dosham" options={MANGLIK} value={form.manglik_status} onChange={set('manglik_status')} name="manglik_status" />
                     </div>
@@ -580,7 +587,7 @@ export default function ProfileWizard() {
                   )}
 
                   {step === 6 && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                       <SearchableSelect
                         label="Zodiac / Raasi"
                         options={(meta.raasis || []).map((r) => ({ value: String(r.id), label: `${r.name_en} / ${r.name_ta}` }))}
@@ -641,8 +648,8 @@ export default function ProfileWizard() {
                   )}
 
                   {step === 8 && (
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="wizard-fields">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                         <PhotoField
                           label="Main Profile Photo (.jpg, .jpeg, .png)"
                           accept=".jpg,.jpeg,.png"
@@ -658,7 +665,7 @@ export default function ProfileWizard() {
                           existing={existingHoroscope}
                         />
                       </div>
-                      <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] p-4 space-y-3">
+                      <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] p-5 space-y-4">
                         <p className="text-sm font-bold text-[var(--ink)]">Privacy & Photo Settings</p>
                         <ToggleRow
                           label="Blur my photo"
@@ -705,7 +712,7 @@ export default function ProfileWizard() {
             </AnimatePresence>
 
             {/* Nav */}
-            <div className="flex justify-between gap-3 mt-8">
+            <div className="wizard-footer">
               <Button variant="secondary" onClick={goBack} disabled={step === 0}>
                 <ArrowLeft className="w-4 h-4" aria-hidden="true" />
                 Back

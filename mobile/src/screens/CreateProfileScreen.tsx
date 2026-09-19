@@ -777,18 +777,21 @@ const styles = StyleSheet.create({
   },
   content: {
     flexGrow: 1,
-    padding: spacing.lg,
-    paddingBottom: layout.bottomContentInset,
+    paddingHorizontal: layout.screenHorizontalPadding,
+    paddingVertical: spacing.lg,
+    paddingBottom: layout.contentBottomPadding,
   },
   stepHeading: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.xl,
+    paddingBottom: spacing.lg,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   stepIcon: {
-    width: 44,
-    height: 44,
+    width: 48,
+    height: 48,
     borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
@@ -800,10 +803,12 @@ const styles = StyleSheet.create({
     ...typography.label,
     fontWeight: '700',
     textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
   stepTitle: {
     ...typography.title,
-    fontSize: 18,
+    fontSize: 20,
+    marginTop: 2,
   },
   completeBadge: {
     paddingHorizontal: spacing.sm,
@@ -816,13 +821,14 @@ const styles = StyleSheet.create({
   },
   fieldLabel: {
     ...typography.caption,
-    fontWeight: '600',
-    marginBottom: spacing.xs,
+    fontWeight: '700',
+    marginBottom: spacing.sm,
+    letterSpacing: 0.2,
   },
   genderRow: {
     flexDirection: 'row',
     gap: spacing.sm,
-    marginBottom: spacing.md,
+    marginBottom: spacing.fieldGap,
   },
   genderBtn: {
     flex: 1,
@@ -832,7 +838,7 @@ const styles = StyleSheet.create({
     gap: 6,
     borderWidth: 2,
     borderRadius: radius.md,
-    paddingVertical: 12,
+    paddingVertical: 14,
   },
   genderBtnText: {
     fontSize: 14,
@@ -865,14 +871,14 @@ const styles = StyleSheet.create({
   privacyCard: {
     borderWidth: 1,
     borderRadius: radius.md,
-    padding: spacing.md,
-    marginTop: spacing.lg,
-    gap: spacing.sm,
+    padding: spacing.lg,
+    marginTop: spacing.xl,
+    gap: spacing.md,
   },
   privacyTitle: {
     ...typography.body,
     fontWeight: '700',
-    marginBottom: spacing.xs,
+    marginBottom: spacing.sm,
   },
   toggleRow: {
     flexDirection: 'row',
@@ -946,8 +952,8 @@ const styles = StyleSheet.create({
   navBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    paddingHorizontal: layout.screenHorizontalPadding,
+    paddingVertical: spacing.lg,
     borderTopWidth: StyleSheet.hairlineWidth,
     gap: spacing.md,
   },

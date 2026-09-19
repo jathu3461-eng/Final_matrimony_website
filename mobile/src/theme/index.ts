@@ -30,13 +30,15 @@ export const spacing = {
   lg: 24,
   xl: 32,
   xxl: 48,
+  fieldGap: 20,   // Standard gap between form fields
+  sectionGap: 36, // Gap between section headers and form groups
 };
 
 export const layout = {
   tabBarHeight: 56,
   headerHeight: 56,
-  screenHorizontalPadding: 16,
-  contentBottomPadding: 24,
+  screenHorizontalPadding: 20,
+  contentBottomPadding: 40,
   bottomContentInset: 32,
 };
 

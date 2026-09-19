@@ -142,12 +142,13 @@ export function SelectField({
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: spacing.md,
+    marginBottom: spacing.fieldGap,
   },
   label: {
     ...typography.caption,
-    fontWeight: '600',
-    marginBottom: spacing.xs,
+    fontWeight: '700',
+    marginBottom: spacing.sm,
+    letterSpacing: 0.2,
   },
   field: {
     flexDirection: 'row',
@@ -156,7 +157,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderRadius: radius.md,
     paddingHorizontal: spacing.md,
-    paddingVertical: 12,
+    paddingVertical: 14,
   },
   value: {
     flex: 1,
