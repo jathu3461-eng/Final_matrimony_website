@@ -8,7 +8,7 @@ import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import { useI18n } from '../context/I18nContext';
 import AuthLayout from '../components/auth/AuthLayout';
-import { Button, TextField, ErrorCard } from '../components/ui';
+import { Button, TextField, ErrorCard, PhoneNumberField } from '../components/ui';
 import { loginSchema, normalizeApiErrors } from '../lib/validation';
 
 const VAL_MSG_KEYS = {
@@ -32,11 +32,13 @@ export default function Login() {
   const { t } = useI18n();
   const [showPw, setShowPw] = useState(false);
   const [serverError, setServerError] = useState('');
+  const [loginType, setLoginType] = useState('email');
 
   const {
     register,
     handleSubmit,
     setError,
+    clearErrors,
     watch,
     formState: { errors, isSubmitting, touchedFields },
   } = useForm({
@@ -90,17 +92,49 @@ export default function Login() {
         )}
 
         <form onSubmit={onSubmit} noValidate className="space-y-4">
-          <motion.div variants={fadeUp}>
-            <TextField
-              label={t('auth_email_or_mobile')}
-              placeholder={t('auth_email_placeholder')}
-              icon={<Mail className="w-4 h-4" />}
-              error={showErr('email')}
-              success={showSuccess('email', emailValue) ? t('auth_valid') : undefined}
-              autoComplete="email"
-              inputMode="email"
-              {...register('email')}
-            />
+          <motion.div variants={fadeUp} className="mb-4">
+            <div className="flex gap-2 p-1 bg-[var(--surface-soft)] rounded-md w-fit mb-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setLoginType('email');
+                  clearErrors('email');
+                }}
+                className={`px-3 py-1 text-xs font-bold rounded ${loginType === 'email' ? 'bg-white shadow-sm text-[var(--ink)]' : 'text-[var(--ink-faint)]'}`}
+              >
+                Email
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setLoginType('phone');
+                  clearErrors('email');
+                }}
+                className={`px-3 py-1 text-xs font-bold rounded ${loginType === 'phone' ? 'bg-white shadow-sm text-[var(--ink)]' : 'text-[var(--ink-faint)]'}`}
+              >
+                Phone
+              </button>
+            </div>
+            
+            {loginType === 'email' ? (
+              <TextField
+                label={t('auth_email_label')}
+                placeholder={t('auth_email_placeholder')}
+                icon={<Mail className="w-4 h-4" />}
+                error={showErr('email')}
+                success={showSuccess('email', emailValue) ? t('auth_valid') : undefined}
+                autoComplete="email"
+                inputMode="email"
+                {...register('email')}
+              />
+            ) : (
+              <PhoneNumberField
+                label={t('auth_mobile_label')}
+                error={showErr('email')}
+                success={showSuccess('email', emailValue) ? t('auth_valid') : undefined}
+                {...register('email')}
+              />
+            )}
           </motion.div>
 
           <motion.div variants={fadeUp}>

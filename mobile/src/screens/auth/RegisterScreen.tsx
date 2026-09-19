@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '@/components/Button';
 import { FormField } from '@/components/FormField';
+import { PhoneNumberInput } from '@/components/PhoneNumberInput';
 import { Screen } from '@/components/Screen';
 import { AnimatedLogo } from '@/components/AnimatedLogo';
 import { authApi } from '@/api/auth';
@@ -204,13 +205,11 @@ export function RegisterScreen() {
               error={errors.email}
               hint={HINTS.email}
             />
-            <FormField
+            <PhoneNumberInput
               label="Phone number"
               value={phone}
               onChangeText={setPhone}
               onBlur={() => touch('phone')}
-              placeholder="e.g. +919876543210"
-              keyboardType="phone-pad"
               error={errors.phone}
               hint={HINTS.phone}
             />

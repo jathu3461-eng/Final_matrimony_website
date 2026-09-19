@@ -1,6 +1,7 @@
 export { default as Button } from './Button';
 export { default as Spinner } from './Spinner';
 export { default as FieldMessage } from './FieldMessage';
+export { default as PhoneNumberField } from './PhoneNumberField';
 export { default as TextField } from './TextField';
 export { default as SelectField } from './SelectField';
 export { default as TextareaField } from './TextareaField';

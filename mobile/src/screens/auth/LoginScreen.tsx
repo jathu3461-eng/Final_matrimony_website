@@ -6,12 +6,14 @@ import {
   StyleSheet,
   Text,
   View,
+  Pressable,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from '@/components/Button';
 import { FormField } from '@/components/FormField';
+import { PhoneNumberInput } from '@/components/PhoneNumberInput';
 import { Screen } from '@/components/Screen';
 import { AnimatedLogo } from '@/components/AnimatedLogo';
 import { extractError } from '@/api/client';
@@ -35,6 +37,7 @@ export function LoginScreen() {
   const [password, setPassword] = useState('');
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [serverError, setServerError] = useState<string | null>(null);
+  const [loginType, setLoginType] = useState<'email' | 'phone'>('email');
 
   const touch = (field: string) => setTouched((t) => ({ ...t, [field]: true }));
 
@@ -92,18 +95,50 @@ export function LoginScreen() {
               Sign in to continue your journey
             </Text>
 
-            <FormField
-              label="Email or phone"
-              value={email}
-              onChangeText={setEmail}
-              onBlur={() => touch('email')}
-              placeholder="you@example.com or +91..."
-              autoCapitalize="none"
-              keyboardType="email-address"
-              autoComplete="email"
-              error={errors.email}
-              hint="Enter your registered email or phone"
-            />
+            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+              <Pressable 
+                style={[
+                  { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 },
+                  loginType === 'email' ? { backgroundColor: colors.surfaceSoft } : {}
+                ]}
+                onPress={() => { setLoginType('email'); setTouched(t => ({...t, email: false})) }}
+              >
+                <Text style={[{ fontSize: 12, fontWeight: 'bold' }, loginType === 'email' ? { color: colors.ink } : { color: colors.inkFaint }]}>Email</Text>
+              </Pressable>
+              <Pressable 
+                style={[
+                  { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 },
+                  loginType === 'phone' ? { backgroundColor: colors.surfaceSoft } : {}
+                ]}
+                onPress={() => { setLoginType('phone'); setTouched(t => ({...t, email: false})) }}
+              >
+                <Text style={[{ fontSize: 12, fontWeight: 'bold' }, loginType === 'phone' ? { color: colors.ink } : { color: colors.inkFaint }]}>Phone</Text>
+              </Pressable>
+            </View>
+
+            {loginType === 'email' ? (
+              <FormField
+                label="Email"
+                value={email}
+                onChangeText={setEmail}
+                onBlur={() => touch('email')}
+                placeholder="you@example.com"
+                autoCapitalize="none"
+                keyboardType="email-address"
+                autoComplete="email"
+                error={errors.email}
+                hint="Enter your registered email"
+              />
+            ) : (
+              <PhoneNumberInput
+                label="Phone number"
+                value={email}
+                onChangeText={setEmail}
+                onBlur={() => touch('email')}
+                error={errors.email}
+                hint="Enter your registered phone number"
+              />
+            )}
             <FormField
               label="Password"
               value={password}

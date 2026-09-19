@@ -8,7 +8,7 @@ import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import { useI18n } from '../context/I18nContext';
 import AuthLayout from '../components/auth/AuthLayout';
-import { Button, TextField, ErrorCard } from '../components/ui';
+import { Button, TextField, ErrorCard, PhoneNumberField } from '../components/ui';
 import { createSignupSchema, normalizeApiErrors, passwordRules } from '../lib/validation';
 
 const VAL_MSG_KEYS = {
@@ -255,14 +255,10 @@ export default function Signup() {
           </motion.div>
 
           <motion.div variants={fadeUp} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <TextField
+            <PhoneNumberField
               label={t('auth_mobile_label')}
-              placeholder={t('auth_mobile_placeholder')}
-              icon={<Phone className="w-4 h-4" />}
               error={showErr('phone_number')}
               success={showSuccess('phone_number', touchedFields.phone_number) ? t('auth_valid') : undefined}
-              autoComplete="tel"
-              inputMode="tel"
               {...register('phone_number')}
             />
             <TextField
