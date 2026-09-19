@@ -103,17 +103,17 @@ export default function SearchableMultiSelect({
       
       <div className="relative group">
         {icon ? (
-          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--ink-faint)] pointer-events-none" aria-hidden="true">
+          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--ink-faint)] pointer-events-none" aria-hidden="true">
             {icon}
           </span>
         ) : (
-          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--ink-faint)] pointer-events-none" aria-hidden="true">
-            <Search className="w-4 h-4" />
+          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--ink-faint)] pointer-events-none" aria-hidden="true">
+            <Search className="w-[18px] h-[18px]" />
           </span>
         )}
         
         <div 
-          className={`input-base pl-10 pr-16 ${stateClass} group-focus-within:border-[var(--primary)] flex flex-wrap gap-1 items-center min-h-[44px] h-auto py-1.5 cursor-text`}
+          className={`input-base !pl-11 !pr-16 ${stateClass} group-focus-within:border-[var(--primary)] flex flex-wrap gap-1 items-center min-h-[56px] h-auto py-1.5 cursor-text`}
           onClick={() => { inputRef.current?.focus(); setIsOpen(true); }}
         >
           {selectedLabels.length > 0 && !query && !isOpen ? (
@@ -137,7 +137,7 @@ export default function SearchableMultiSelect({
           )}
         </div>
         
-        <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
+        <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1">
           {(query || selectedValues.length > 0) && (
             <button
               type="button"

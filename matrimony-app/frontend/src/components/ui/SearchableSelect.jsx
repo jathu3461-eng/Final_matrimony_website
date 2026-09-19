@@ -97,12 +97,12 @@ export default function SearchableSelect({
       
       <div className="relative group">
         {icon ? (
-          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--ink-faint)] pointer-events-none" aria-hidden="true">
+          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--ink-faint)] pointer-events-none" aria-hidden="true">
             {icon}
           </span>
         ) : (
-          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--ink-faint)] pointer-events-none" aria-hidden="true">
-            <Search className="w-4 h-4" />
+          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--ink-faint)] pointer-events-none" aria-hidden="true">
+            <Search className="w-[18px] h-[18px]" />
           </span>
         )}
         
@@ -110,7 +110,7 @@ export default function SearchableSelect({
           id={inputId}
           ref={inputRef}
           type="text"
-          className={`input-base pl-10 pr-16 min-h-[56px] ${stateClass} group-focus-within:border-[var(--primary)] text-ellipsis whitespace-nowrap overflow-hidden`}
+          className={`input-base !pl-11 !pr-16 min-h-[56px] ${stateClass} group-focus-within:border-[var(--primary)] text-ellipsis whitespace-nowrap overflow-hidden`}
           placeholder={placeholder}
           value={query}
           onFocus={() => setIsOpen(true)}
@@ -121,7 +121,7 @@ export default function SearchableSelect({
           required={required && !value}
         />
         
-        <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
+        <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1">
           {query && (
             <button
               type="button"
