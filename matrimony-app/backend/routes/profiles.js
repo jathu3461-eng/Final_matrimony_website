@@ -102,7 +102,7 @@ function videoFilter(req, file, cb) {
   cb(null, true);
 }
 
-const uploadVideo = multer({ storage: videoStorage, fileFilter: videoFilter, limits: { fileSize: 50 * 1024 * 1024 } });
+const uploadVideo = multer({ storage: videoStorage, fileFilter: videoFilter, limits: { fileSize: 3 * 1024 * 1024 * 1024 } }); // 3GB
 
 function calcAge(dob) {
   const birth = new Date(dob);

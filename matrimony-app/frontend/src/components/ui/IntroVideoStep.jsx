@@ -122,7 +122,7 @@ export default function IntroVideoStep({
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    if (file.size > 50 * 1024 * 1024) { alert('Video file is too large (max 50MB).'); return; }
+    if (file.size > 3 * 1024 * 1024 * 1024) { alert('Video file is too large (max 3GB).'); return; }
     const url = URL.createObjectURL(file);
     const tempVideo = document.createElement('video');
     tempVideo.preload = 'metadata';
@@ -277,7 +277,7 @@ export default function IntroVideoStep({
               <label className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-[var(--primary)] bg-[var(--primary-soft)] rounded-xl cursor-pointer hover:bg-[var(--primary)] hover:bg-opacity-10 transition-colors">
                 <Upload className="w-8 h-8 text-[var(--primary-strong)] mb-2" />
                 <span className="font-bold text-[var(--primary-strong)]">Choose from device</span>
-                <span className="text-[11px] text-[var(--primary-strong)] opacity-80 mt-1">MP4, MOV up to 50MB</span>
+                <span className="text-[11px] text-[var(--primary-strong)] opacity-80 mt-1">MP4, MOV up to 3GB</span>
                 <input type="file" accept="video/mp4,video/quicktime,video/webm" className="hidden" onChange={handleFileChange} />
               </label>
 

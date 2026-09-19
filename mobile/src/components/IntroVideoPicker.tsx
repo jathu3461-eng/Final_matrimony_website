@@ -108,7 +108,7 @@ export function IntroVideoPicker({ hasExisting, error, onVideoSelected }: IntroV
             >
               <Ionicons name="cloud-upload" size={32} color={colors.primaryStrong} />
               <Text style={[styles.actionBtnTitle, { color: colors.primaryStrong }]}>Choose from device</Text>
-              <Text style={[styles.actionBtnSub, { color: colors.primaryStrong }]}>MP4, MOV up to 50MB</Text>
+              <Text style={[styles.actionBtnSub, { color: colors.primaryStrong }]}>MP4, MOV up to 3GB</Text>
             </Pressable>
 
             <Pressable 
