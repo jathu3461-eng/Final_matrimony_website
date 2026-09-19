@@ -11,8 +11,9 @@ export default function IntroVideoStep({
   const [stream, setStream] = useState(null);
   const [recording, setRecording] = useState(false);
   const [recordedChunks, setRecordedChunks] = useState([]);
-  const [duration, setDuration] = useState(0); // in seconds
+  const [duration, setDuration] = useState(0);
   const [previewUrl, setPreviewUrl] = useState(null);
+  const [cameraError, setCameraError] = useState(null); // null | 'denied' | 'unavailable' | 'https'
   
   const videoRef = useRef(null);
   const mediaRecorderRef = useRef(null);
@@ -35,6 +36,19 @@ export default function IntroVideoStep({
   };
 
   const startCamera = async () => {
+    setCameraError(null);
+
+    // Camera won't work on non-secure HTTP origins
+    if (location.protocol === 'http:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+      setCameraError('https');
+      return;
+    }
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setCameraError('unavailable');
+      return;
+    }
+
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       setStream(mediaStream);
@@ -46,7 +60,13 @@ export default function IntroVideoStep({
         videoRef.current.play();
       }
     } catch (err) {
-      alert('Camera access denied or not available. Please use "Choose from device".');
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        setCameraError('denied');
+      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        setCameraError('unavailable');
+      } else {
+        setCameraError('unavailable');
+      }
     }
   };
 
@@ -55,7 +75,6 @@ export default function IntroVideoStep({
     setRecordedChunks([]);
     setDuration(0);
     
-    // Check supported types
     let options = { mimeType: 'video/webm;codecs=vp9,opus' };
     if (!MediaRecorder.isTypeSupported(options.mimeType)) {
       options = { mimeType: 'video/webm;codecs=vp8,opus' };
@@ -68,29 +87,16 @@ export default function IntroVideoStep({
     }
 
     const mediaRecorder = new MediaRecorder(stream, options);
-    
     mediaRecorder.ondataavailable = (e) => {
-      if (e.data.size > 0) {
-        setRecordedChunks((prev) => [...prev, e.data]);
-      }
+      if (e.data.size > 0) setRecordedChunks((prev) => [...prev, e.data]);
     };
-    
-    mediaRecorder.onstop = () => {
-      // It takes a tick for chunks to flush
-      setTimeout(() => {
-        setMode('preview');
-      }, 100);
-    };
-
+    mediaRecorder.onstop = () => setTimeout(() => setMode('preview'), 100);
     mediaRecorderRef.current = mediaRecorder;
-    mediaRecorder.start(1000); // chunk every second
+    mediaRecorder.start(1000);
 
     timerRef.current = setInterval(() => {
       setDuration(prev => {
-        if (prev >= 179) {
-          stopRecording(); // Auto stop at 3 min
-          return 180;
-        }
+        if (prev >= 179) { stopRecording(); return 180; }
         return prev + 1;
       });
     }, 1000);
@@ -103,13 +109,11 @@ export default function IntroVideoStep({
     stopCamera();
   };
 
-  // Convert chunks to a File on transition to preview
   useEffect(() => {
     if (mode === 'preview' && recordedChunks.length > 0 && !previewUrl) {
       const blob = new Blob(recordedChunks, { type: 'video/webm' });
       const url = URL.createObjectURL(blob);
       setPreviewUrl(url);
-      
       const file = new File([blob], 'intro-video.webm', { type: 'video/webm' });
       onVideoSelected(file, duration);
     }
@@ -118,29 +122,15 @@ export default function IntroVideoStep({
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
-    if (file.size > 50 * 1024 * 1024) {
-      alert('Video file is too large (max 50MB). Please choose a smaller video.');
-      return;
-    }
-
-    // Check duration by loading it into a video element
+    if (file.size > 50 * 1024 * 1024) { alert('Video file is too large (max 50MB).'); return; }
     const url = URL.createObjectURL(file);
     const tempVideo = document.createElement('video');
     tempVideo.preload = 'metadata';
     tempVideo.onloadedmetadata = () => {
       URL.revokeObjectURL(url);
       const vidDuration = Math.round(tempVideo.duration);
-      
-      if (vidDuration < 60) {
-        alert('Your introduction video must be at least 1 minute long.');
-        return;
-      }
-      if (vidDuration > 180) {
-        alert('Your introduction video must not exceed 3 minutes.');
-        return;
-      }
-      
+      if (vidDuration < 60) { alert('Your introduction video must be at least 1 minute long.'); return; }
+      if (vidDuration > 180) { alert('Your introduction video must not exceed 3 minutes.'); return; }
       setPreviewUrl(URL.createObjectURL(file));
       setDuration(vidDuration);
       setMode('preview');
@@ -162,12 +152,44 @@ export default function IntroVideoStep({
     setRecordedChunks([]);
     setDuration(0);
     setMode(null);
+    setCameraError(null);
     onVideoSelected(null, 0);
+  };
+
+  const CAMERA_ERROR_INFO = {
+    denied: {
+      icon: '🔐',
+      title: 'Camera Access Blocked',
+      desc: 'Your browser has blocked camera access. Follow these steps to enable it:',
+      steps: [
+        'Click the 🔒 lock icon (or camera icon) in the address bar at the top.',
+        'Find "Camera" and "Microphone" in the permissions list.',
+        'Change both from "Block" to "Allow".',
+        'Refresh this page and try again.',
+      ],
+      retry: true,
+    },
+    unavailable: {
+      icon: '📷',
+      title: 'No Camera Found',
+      desc: 'No camera was detected on your device. Please upload a pre-recorded video instead.',
+      steps: [],
+      retry: false,
+    },
+    https: {
+      icon: '🔒',
+      title: 'Secure Connection Required',
+      desc: 'Camera recording requires a secure HTTPS connection. Please upload a pre-recorded video instead.',
+      steps: [],
+      retry: false,
+    },
   };
 
   return (
     <div className="w-full">
       <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] p-6 mb-6">
+
+        {/* Header */}
         <div className="flex gap-4 mb-4">
           <div className="w-10 h-10 rounded-full grad-primary flex items-center justify-center text-white shrink-0">
             <Camera className="w-5 h-5" />
@@ -180,6 +202,7 @@ export default function IntroVideoStep({
           </div>
         </div>
 
+        {/* Privacy Notice */}
         <div className="bg-[var(--warning-soft)] border border-[var(--warning-strong)] p-4 rounded-xl flex items-start gap-3 mb-6">
           <span className="text-xl">🔒</span>
           <p className="text-[13px] text-[var(--warning-strong)] leading-relaxed font-medium">
@@ -188,13 +211,61 @@ export default function IntroVideoStep({
         </div>
 
         {error && (
-          <p className="text-[13px] font-semibold text-[var(--error)] mb-4" role="alert">
-            {error}
-          </p>
+          <p className="text-[13px] font-semibold text-[var(--error)] mb-4" role="alert">{error}</p>
         )}
 
-        {/* DEFAULT VIEW */}
-        {!mode && (
+        {/* ── CAMERA ERROR STATE ── */}
+        {cameraError && (() => {
+          const info = CAMERA_ERROR_INFO[cameraError];
+          return (
+            <div className="rounded-xl border-2 border-amber-300 bg-amber-50 p-5 mb-4">
+              <div className="flex items-start gap-3 mb-3">
+                <span className="text-2xl shrink-0">{info.icon}</span>
+                <div>
+                  <p className="font-bold text-amber-800 text-sm">{info.title}</p>
+                  <p className="text-amber-700 text-[13px] mt-1 leading-relaxed">{info.desc}</p>
+                </div>
+              </div>
+
+              {info.steps.length > 0 && (
+                <ol className="space-y-2 mt-3 ml-9">
+                  {info.steps.map((step, i) => (
+                    <li key={i} className="flex items-start gap-2 text-[13px] text-amber-800">
+                      <span className="w-5 h-5 rounded-full bg-amber-300 text-amber-900 font-bold text-[11px] flex items-center justify-center shrink-0 mt-0.5">
+                        {i + 1}
+                      </span>
+                      {step}
+                    </li>
+                  ))}
+                </ol>
+              )}
+
+              <div className="flex flex-wrap gap-3 mt-4 ml-9">
+                {info.retry && (
+                  <button
+                    type="button"
+                    onClick={() => { setCameraError(null); startCamera(); }}
+                    className="inline-flex items-center gap-2 text-xs font-bold px-4 py-2 rounded-xl bg-amber-500 text-white hover:bg-amber-600 transition-colors"
+                  >
+                    <Camera className="w-4 h-4" /> Try Camera Again
+                  </button>
+                )}
+                <label className="inline-flex items-center gap-2 text-xs font-bold px-4 py-2 rounded-xl bg-[var(--primary)] text-white cursor-pointer hover:opacity-90 transition-opacity">
+                  <Upload className="w-4 h-4" /> Upload Video Instead
+                  <input
+                    type="file"
+                    accept="video/mp4,video/quicktime,video/webm"
+                    className="hidden"
+                    onChange={(e) => { setCameraError(null); handleFileChange(e); }}
+                  />
+                </label>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* ── DEFAULT VIEW ── */}
+        {!mode && !cameraError && (
           <div className="space-y-4">
             {hasExisting && (
               <div className="bg-[var(--success-soft)] text-[var(--success)] p-4 rounded-xl flex justify-between items-center mb-6 border border-[var(--success)]/20">
@@ -202,22 +273,16 @@ export default function IntroVideoStep({
                 <span className="text-xs">You can replace it below</span>
               </div>
             )}
-            
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <label className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-[var(--primary)] bg-[var(--primary-soft)] rounded-xl cursor-pointer hover:bg-[var(--primary)] hover:bg-opacity-10 transition-colors">
                 <Upload className="w-8 h-8 text-[var(--primary-strong)] mb-2" />
                 <span className="font-bold text-[var(--primary-strong)]">Choose from device</span>
                 <span className="text-[11px] text-[var(--primary-strong)] opacity-80 mt-1">MP4, MOV up to 50MB</span>
-                <input 
-                  type="file" 
-                  accept="video/mp4,video/quicktime,video/webm" 
-                  className="hidden" 
-                  onChange={handleFileChange} 
-                />
+                <input type="file" accept="video/mp4,video/quicktime,video/webm" className="hidden" onChange={handleFileChange} />
               </label>
 
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={startCamera}
                 className="flex flex-col items-center justify-center p-6 border-2 border-[var(--border-strong)] rounded-xl bg-[var(--surface)] hover:border-[var(--primary)] transition-colors"
               >
@@ -229,16 +294,11 @@ export default function IntroVideoStep({
           </div>
         )}
 
-        {/* RECORDING VIEW */}
+        {/* ── RECORDING VIEW ── */}
         {mode === 'record' && (
           <div className="flex flex-col items-center">
             <div className="relative w-full max-w-lg aspect-video bg-black rounded-xl overflow-hidden mb-4">
-              <video 
-                ref={videoRef} 
-                className="w-full h-full object-cover" 
-                muted 
-                playsInline 
-              />
+              <video ref={videoRef} className="w-full h-full object-cover" muted playsInline />
               {recording && (
                 <div className="absolute top-4 right-4 bg-red-500 text-white text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-2 animate-pulse">
                   <div className="w-2 h-2 bg-white rounded-full"></div>
@@ -246,24 +306,16 @@ export default function IntroVideoStep({
                 </div>
               )}
             </div>
-
             <div className="flex gap-4">
               {!recording ? (
                 <>
-                  <Button type="button" onClick={startRecording} variant="primary">
-                    Start Recording
-                  </Button>
-                  <Button type="button" onClick={cancelAndReset} variant="secondary">
-                    Cancel
-                  </Button>
+                  <Button type="button" onClick={startRecording} variant="primary">Start Recording</Button>
+                  <Button type="button" onClick={cancelAndReset} variant="secondary">Cancel</Button>
                 </>
               ) : (
-                <Button type="button" onClick={stopRecording} className="bg-red-500 hover:bg-red-600 text-white">
-                  Stop Recording
-                </Button>
+                <Button type="button" onClick={stopRecording} className="bg-red-500 hover:bg-red-600 text-white">Stop Recording</Button>
               )}
             </div>
-            
             {recording && duration < 60 && (
               <p className="text-[12px] text-[var(--ink-faint)] mt-3">
                 Please record for at least 1 minute. ({60 - duration}s remaining)
@@ -272,18 +324,12 @@ export default function IntroVideoStep({
           </div>
         )}
 
-        {/* PREVIEW VIEW */}
+        {/* ── PREVIEW VIEW ── */}
         {mode === 'preview' && (
           <div className="flex flex-col items-center">
             <div className="relative w-full max-w-lg aspect-video bg-black rounded-xl overflow-hidden mb-4 border border-[var(--border)]">
-              <video 
-                src={previewUrl} 
-                className="w-full h-full object-contain" 
-                controls 
-                playsInline 
-              />
+              <video src={previewUrl} className="w-full h-full object-contain" controls playsInline />
             </div>
-            
             <div className="w-full max-w-lg bg-[var(--surface)] border border-[var(--border)] p-4 rounded-xl flex items-center justify-between mb-6">
               <div>
                 <p className="font-bold text-sm text-[var(--ink)]">Video Preview</p>
@@ -301,15 +347,14 @@ export default function IntroVideoStep({
                 )}
               </div>
             </div>
-
             <div className="flex gap-4">
               <Button type="button" onClick={cancelAndReset} variant="secondary">
-                <RefreshCcw className="w-4 h-4 mr-2" />
-                Replace Video
+                <RefreshCcw className="w-4 h-4 mr-2" /> Replace Video
               </Button>
             </div>
           </div>
         )}
+
       </div>
     </div>
   );
