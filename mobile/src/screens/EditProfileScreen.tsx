@@ -23,6 +23,7 @@ import { Screen } from '@/components/Screen';
 import { SelectField } from '@/components/SelectField';
 import { SearchableSelect } from '@/components/SearchableSelect';
 import { Spinner } from '@/components/Spinner';
+import { IntroVideoPicker } from '@/components/IntroVideoPicker';
 import HeightSelector from '@/components/HeightSelector';
 import { useTheme } from '@/theme';
 import { radius, spacing, typography, layout } from '@/theme';
@@ -60,6 +61,8 @@ export function EditProfileScreen() {
 
   const [form, setForm] = useState<Record<string, string>>({});
   const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [introVideoUri, setIntroVideoUri] = useState<string | null>(null);
+  const [introVideoDuration, setIntroVideoDuration] = useState<number>(0);
   const [saving, setSaving] = useState(false);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
 
@@ -94,6 +97,7 @@ export function EditProfileScreen() {
       manglik_status: p.manglik_status || 'no',
       blur_photo: String(p.blur_photo ?? 0),
       blur_horoscope: String(p.blur_horoscope ?? 0),
+      intro_video_status: (p as any).has_intro_video ? 'uploaded' : '',
     });
   }, [p]);
 
@@ -176,6 +180,19 @@ export function EditProfileScreen() {
         } as unknown as Blob);
       }
       await profileApi.update(p.id, formData);
+
+      if (introVideoUri) {
+        const videoFormData = new FormData();
+        const ext = introVideoUri.split('.').pop() || 'mp4';
+        videoFormData.append('intro_video', {
+          uri: introVideoUri,
+          name: `intro-video.${ext}`,
+          type: `video/${ext}`,
+        } as unknown as Blob);
+        videoFormData.append('duration_seconds', String(introVideoDuration));
+        await profileApi.uploadIntroVideo(p.id, videoFormData);
+      }
+
       queryClient.invalidateQueries({ queryKey: ['profile', profileId] });
       queryClient.invalidateQueries({ queryKey: ['my-profiles'] });
       Alert.alert('Profile updated', 'Your changes have been saved.', [
@@ -435,6 +452,18 @@ export function EditProfileScreen() {
             onChangeText={set('city_or_state')}
             placeholder="Toronto"
             maxLength={100}
+          />
+
+          {/* Video */}
+          <SectionHeader icon="videocam" title="Introduction Video" colors={colors} />
+          <IntroVideoPicker
+            hasExisting={form.intro_video_status === 'uploaded'}
+            error={null}
+            onVideoSelected={(uri, duration) => {
+              setIntroVideoUri(uri);
+              setIntroVideoDuration(duration);
+              setForm((f) => ({ ...f, intro_video_status: uri ? 'selected' : (f.intro_video_status === 'uploaded' ? 'uploaded' : '') }));
+            }}
           />
 
           {/* About */}

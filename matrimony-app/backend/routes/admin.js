@@ -164,6 +164,35 @@ router.post('/profiles/:id/unverify', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// ── Introduction Video Verification ───────────────────────────────────────────
+
+router.get('/intro-videos', async (req, res) => {
+  try {
+    const profiles = await db.all(`
+      SELECT p.id, p.name, p.intro_video_status, p.intro_video_duration, p.created_at,
+             u.username, u.email
+      FROM profiles p
+      JOIN users u ON u.id = p.owner_user_id
+      WHERE p.intro_video_key IS NOT NULL
+      ORDER BY p.intro_video_status = 'pending' DESC, p.created_at DESC
+      LIMIT 100
+    `);
+    res.json({ profiles });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.post('/profiles/:id/intro-video/status', async (req, res) => {
+  try {
+    const { status } = req.body;
+    if (!['approved', 'rejected', 'pending'].includes(status)) {
+      return res.status(400).json({ error: 'Invalid status' });
+    }
+    const result = await db.run('UPDATE profiles SET intro_video_status = ? WHERE id = ?', [status, req.params.id]);
+    if (result.changes === 0) return res.status(404).json({ error: 'Profile not found' });
+    res.json({ ok: true, intro_video_status: status });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // ── User Management (ban / unban) ─────────────────────────────────────────────
 
 router.get('/users', async (req, res) => {

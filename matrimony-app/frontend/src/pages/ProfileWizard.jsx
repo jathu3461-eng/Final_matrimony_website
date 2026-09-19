@@ -8,6 +8,7 @@ import {
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import { Button, Stepper, ProgressBar, Badge, ErrorCard, TextField, SelectField, SearchableSelect, TextareaField, useToast, HeightSelector } from '../components/ui';
+import IntroVideoStep from '../components/ui/IntroVideoStep';
 import { profileSteps, validateStep, POSTED_BY } from '../lib/validation';
 
 const STEP_ICONS = { User, GraduationCap, Ruler, Heart, Wallet, Landmark, Star, MapPin, Camera, FileText };
@@ -54,6 +55,7 @@ const EMPTY_FORM = {
   blur_photo: 0, blur_horoscope: 0,
   diet: 'any', family_values: 'moderate', career_goals: 'working',
   willing_to_relocate: 'open', income_range: '$50k - $100k', manglik_status: 'no',
+  intro_video_status: '',
 };
 
 const DRAFT_KEY_PREFIX = 'mukurtham_draft_';
@@ -130,6 +132,8 @@ export default function ProfileWizard() {
   const [horoscopeFile, setHoroscopeFile] = useState(null);
   const [existingPhoto, setExistingPhoto] = useState(null);
   const [existingHoroscope, setExistingHoroscope] = useState(null);
+  const [introVideoFile, setIntroVideoFile] = useState(null);
+  const [introVideoDuration, setIntroVideoDuration] = useState(0);
   const [draftStatus, setDraftStatus] = useState('');
   const contentRef = useRef(null);
   const [userId, setUserId] = useState('anon');
@@ -191,6 +195,7 @@ export default function ProfileWizard() {
         diet: p.diet || 'any', family_values: p.family_values || 'moderate',
         career_goals: p.career_goals || 'working', willing_to_relocate: p.willing_to_relocate || 'open',
         income_range: p.income_range || '$50k - $100k', manglik_status: p.manglik_status || 'no',
+        intro_video_status: p.has_intro_video ? 'uploaded' : '',
       });
       setExistingPhoto(p.main_profile_picture);
       setExistingHoroscope(p.horoscope_chart);
@@ -295,14 +300,26 @@ export default function ProfileWizard() {
       Object.entries(form).forEach(([k, v]) => fd.append(k, v));
       if (photoFile) fd.append('main_profile_picture', photoFile);
       if (horoscopeFile) fd.append('horoscope_chart', horoscopeFile);
+      
+      let profileId = id;
       if (isEdit) {
         await api.put(`/profiles/${id}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
         toast.success('Profile updated successfully');
       } else {
-        await api.post('/profiles', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+        const res = await api.post('/profiles', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+        profileId = res.data.profile.id;
         clearDraft();
-        toast.success('Profile created — welcome to Mukurtham!');
+        toast.success('Profile created — uploading video...');
       }
+
+      if (introVideoFile) {
+        const videoFd = new FormData();
+        videoFd.append('intro_video', introVideoFile);
+        videoFd.append('duration_seconds', introVideoDuration);
+        await api.post(`/profiles/${profileId}/intro-video`, videoFd, { headers: { 'Content-Type': 'multipart/form-data' } });
+        toast.success('Introduction video uploaded successfully!');
+      }
+
       navigate('/dashboard');
     } catch (err) {
       const msg = err.response?.data?.error || Object.values(err.response?.data?.errors || {})[0] || `Could not ${isEdit ? 'update' : 'create'} profile`;
@@ -684,6 +701,19 @@ export default function ProfileWizard() {
                   )}
 
                   {step === 9 && (
+                    <IntroVideoStep 
+                      hasExisting={form.intro_video_status === 'uploaded'}
+                      onVideoSelected={(file, duration) => {
+                        setIntroVideoFile(file);
+                        setIntroVideoDuration(duration);
+                        setForm(f => ({ ...f, intro_video_status: file ? 'selected' : (f.intro_video_status === 'uploaded' ? 'uploaded' : '') }));
+                        if (file) setTouched(t => ({ ...t, intro_video_status: true }));
+                      }}
+                      error={touched.intro_video_status && stepErrors.intro_video_status}
+                    />
+                  )}
+
+                  {step === 10 && (
                     <>
                       <TextareaField
                         label="About Me"

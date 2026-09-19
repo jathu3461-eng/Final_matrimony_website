@@ -61,6 +61,9 @@ async function shouldBlurMedia(viewer, profileRow) {
 const uploadDir = path.join(__dirname, '..', 'uploads');
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
+const privateVideoDir = path.join(__dirname, '..', 'private_uploads', 'intro_videos');
+if (!fs.existsSync(privateVideoDir)) fs.mkdirSync(privateVideoDir, { recursive: true });
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadDir),
   filename: (req, file, cb) => {
@@ -81,6 +84,25 @@ function fileFilter(req, file, cb) {
 }
 
 const upload = multer({ storage, fileFilter, limits: { fileSize: 8 * 1024 * 1024 } });
+
+const videoStorage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, privateVideoDir),
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    cb(null, `intro-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`);
+  },
+});
+
+function videoFilter(req, file, cb) {
+  const allowed = ['.mp4', '.mov', '.webm'];
+  const ext = path.extname(file.originalname).toLowerCase();
+  if (!allowed.includes(ext)) {
+    return cb(new Error('Invalid Format. Video must be .mp4, .mov, or .webm'));
+  }
+  cb(null, true);
+}
+
+const uploadVideo = multer({ storage: videoStorage, fileFilter: videoFilter, limits: { fileSize: 50 * 1024 * 1024 } });
 
 function calcAge(dob) {
   const birth = new Date(dob);
@@ -153,8 +175,9 @@ router.get('/search', async (req, res) => {
     const rowsWithMeta = await Promise.all(rows.map(async r => {
       const age = calcAge(r.date_of_birth);
       const blurState = await shouldBlurMedia(viewer, r);
+      const { intro_video_key, ...safeProfile } = r;
       return {
-        ...r, age,
+        ...safeProfile, age,
         photo_blurred: blurState.photo,
         horoscope_blurred: blurState.horoscope,
         is_shortlisted: blurState.isShortlisted,
@@ -235,12 +258,20 @@ router.get('/:id', async (req, res) => {
     if (!row) return res.status(404).json({ error: 'Profile not found' });
     const viewer = getOptionalUser(req);
     const blurState = await shouldBlurMedia(viewer, row);
+    const { intro_video_key, ...safeProfile } = row;
+    
+    // Admin and owner can see intro video info (but not the key itself directly for security)
+    const canViewVideo = viewer && (viewer.role === 'admin' || viewer.id === row.owner_user_id);
+    
     res.json({
       profile: {
-        ...row, age: calcAge(row.date_of_birth),
+        ...safeProfile, age: calcAge(row.date_of_birth),
         photo_blurred: blurState.photo, horoscope_blurred: blurState.horoscope,
         is_shortlisted: blurState.isShortlisted, interest_status: blurState.interestStatus,
-        interest_id: blurState.interestId, interest_direction: blurState.interestDirection
+        interest_id: blurState.interestId, interest_direction: blurState.interestDirection,
+        has_intro_video: !!intro_video_key,
+        intro_video_status: canViewVideo ? row.intro_video_status : undefined,
+        intro_video_duration: canViewVideo ? row.intro_video_duration : undefined
       }
     });
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -284,7 +315,8 @@ router.post('/', requireAuth, upload.fields([
     ]);
 
     const profile = await db.get('SELECT * FROM profiles WHERE id = ?', [info.lastInsertRowid]);
-    res.status(201).json({ profile: { ...profile, age: calcAge(profile.date_of_birth) } });
+    const { intro_video_key, ...safeProfile } = profile;
+    res.status(201).json({ profile: { ...safeProfile, age: calcAge(profile.date_of_birth), has_intro_video: !!intro_video_key } });
   } catch (err) { console.error(err); res.status(500).json({ error: err.message }); }
 });
 
@@ -322,7 +354,8 @@ router.put('/:id', requireAuth, upload.fields([
     ]);
 
     const updated = await db.get('SELECT * FROM profiles WHERE id = ?', [req.params.id]);
-    res.json({ profile: { ...updated, age: calcAge(updated.date_of_birth) } });
+    const { intro_video_key, ...safeProfile } = updated;
+    res.json({ profile: { ...safeProfile, age: calcAge(updated.date_of_birth), has_intro_video: !!intro_video_key } });
   } catch (err) { console.error(err); res.status(500).json({ error: err.message }); }
 });
 
@@ -334,6 +367,74 @@ router.delete('/:id', requireAuth, async (req, res) => {
     if (existing.owner_user_id !== req.user.id && req.user.role !== 'admin')
       return res.status(403).json({ error: 'Not authorized to delete this profile' });
     await db.run('DELETE FROM profiles WHERE id = ?', [req.params.id]);
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// POST /api/profiles/:id/intro-video
+router.post('/:id/intro-video', requireAuth, uploadVideo.single('intro_video'), async (req, res) => {
+  try {
+    const existing = await db.get('SELECT * FROM profiles WHERE id = ?', [req.params.id]);
+    if (!existing) return res.status(404).json({ error: 'Profile not found' });
+    if (existing.owner_user_id !== req.user.id)
+      return res.status(403).json({ error: 'Not authorized to upload video for this profile' });
+
+    if (!req.file) return res.status(400).json({ error: 'No video file provided' });
+    
+    // Client should send duration in seconds
+    const duration = parseInt(req.body.duration_seconds, 10) || 0;
+
+    // Delete old video if exists
+    if (existing.intro_video_key) {
+      const oldPath = path.join(privateVideoDir, existing.intro_video_key);
+      if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+    }
+
+    await db.run('UPDATE profiles SET intro_video_key = ?, intro_video_status = ?, intro_video_duration = ? WHERE id = ?',
+      [req.file.filename, 'pending', duration, req.params.id]);
+
+    res.json({ ok: true, message: 'Video uploaded successfully', status: 'pending' });
+  } catch (err) { console.error(err); res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/profiles/:id/intro-video-stream
+router.get('/:id/intro-video-stream', async (req, res) => {
+  try {
+    const row = await db.get('SELECT * FROM profiles WHERE id = ?', [req.params.id]);
+    if (!row) return res.status(404).json({ error: 'Profile not found' });
+
+    const viewer = getOptionalUser(req);
+    if (!viewer) return res.status(401).json({ error: 'Unauthorized' });
+
+    if (viewer.id !== row.owner_user_id && viewer.role !== 'admin') {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    if (!row.intro_video_key) return res.status(404).json({ error: 'Video not found' });
+
+    const videoPath = path.join(privateVideoDir, row.intro_video_key);
+    if (!fs.existsSync(videoPath)) return res.status(404).json({ error: 'Video file not found' });
+
+    res.sendFile(videoPath);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// DELETE /api/profiles/:id/intro-video
+router.delete('/:id/intro-video', requireAuth, async (req, res) => {
+  try {
+    const existing = await db.get('SELECT * FROM profiles WHERE id = ?', [req.params.id]);
+    if (!existing) return res.status(404).json({ error: 'Profile not found' });
+    if (existing.owner_user_id !== req.user.id && req.user.role !== 'admin')
+      return res.status(403).json({ error: 'Not authorized to delete this video' });
+
+    if (existing.intro_video_key) {
+      const oldPath = path.join(privateVideoDir, existing.intro_video_key);
+      if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+    }
+
+    await db.run('UPDATE profiles SET intro_video_key = NULL, intro_video_status = ?, intro_video_duration = NULL WHERE id = ?',
+      ['pending', req.params.id]);
+
     res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });

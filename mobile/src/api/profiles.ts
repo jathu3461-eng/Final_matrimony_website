@@ -58,6 +58,12 @@ export const profileApi = {
     await api.delete(`/profiles/${id}`);
   },
 
+  async uploadIntroVideo(id: number | string, formData: FormData): Promise<void> {
+    await api.post(`/profiles/${id}/intro-video`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+
   async match(profileId1: number, profileId2: number) {
     const { data } = await api.post('/profiles/match', {
       profile_id_1: profileId1,

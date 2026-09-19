@@ -20,6 +20,7 @@ import { SelectField } from '@/components/SelectField';
 import { SearchableSelect } from '@/components/SearchableSelect';
 import { ProgressBar } from '@/components/ProgressBar';
 import { StepIndicator } from '@/components/StepIndicator';
+import { IntroVideoPicker } from '@/components/IntroVideoPicker';
 import { profileApi } from '@/api/profiles';
 import { extractError } from '@/api/client';
 import { useTheme } from '@/theme';
@@ -54,6 +55,8 @@ export function CreateProfileScreen() {
   const [meta, setMeta] = useState<ProfileMeta | null>(null);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [horoscopeUri, setHoroscopeUri] = useState<string | null>(null);
+  const [introVideoUri, setIntroVideoUri] = useState<string | null>(null);
+  const [introVideoDuration, setIntroVideoDuration] = useState<number>(0);
   const scrollRef = useRef<ScrollView>(null);
 
   useEffect(() => {
@@ -185,7 +188,22 @@ export function CreateProfileScreen() {
           type: `image/${ext}`,
         } as unknown as Blob);
       }
-      await profileApi.create(formData);
+      const res = await profileApi.create(formData);
+      
+      // Upload video if selected
+      if (introVideoUri) {
+        const videoFormData = new FormData();
+        const ext = introVideoUri.split('.').pop() || 'mp4';
+        videoFormData.append('intro_video', {
+          uri: introVideoUri,
+          name: `intro-video.${ext}`,
+          type: `video/${ext}`,
+        } as unknown as Blob);
+        videoFormData.append('duration_seconds', String(introVideoDuration));
+        
+        await profileApi.uploadIntroVideo(res.profile.id, videoFormData);
+      }
+
       Alert.alert('Profile created', 'Your profile is now live.', [
         { text: 'OK', onPress: () => navigation.goBack() },
       ]);
@@ -571,8 +589,23 @@ export function CreateProfileScreen() {
           </>
         );
 
-      // Step 9: Bio & Review
+      // Step 9: Introduction Video
       case 9:
+        return (
+          <IntroVideoPicker
+            hasExisting={form.intro_video_status === 'uploaded'}
+            error={touched.intro_video_status ? stepErrors.intro_video_status : null}
+            onVideoSelected={(uri, duration) => {
+              setIntroVideoUri(uri);
+              setIntroVideoDuration(duration);
+              setForm((f) => ({ ...f, intro_video_status: uri ? 'selected' : (f.intro_video_status === 'uploaded' ? 'uploaded' : '') }));
+              if (uri) setTouched((t) => ({ ...t, intro_video_status: true }));
+            }}
+          />
+        );
+
+      // Step 10: Bio & Review
+      case 10:
         return (
           <>
             <FormField
@@ -599,7 +632,7 @@ export function CreateProfileScreen() {
             </View>
 
             <View style={[styles.summaryCard, { borderColor: colors.border, backgroundColor: colors.surface }]}>
-              {profileSteps.slice(0, 9).map((s, i) => (
+              {profileSteps.slice(0, 10).map((s, i) => (
                 <View key={s.key} style={[styles.summaryRow, { borderBottomColor: colors.border }]}>
                   <Text style={[styles.summaryLabel, { color: colors.inkFaint }]}>{s.title}</Text>
                   <Text style={[styles.summaryStatus, { color: validSteps[i] ? colors.success : colors.error }]}>

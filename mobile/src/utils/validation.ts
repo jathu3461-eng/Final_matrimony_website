@@ -180,6 +180,7 @@ export interface ProfileForm {
   willing_to_relocate: string;
   income_range: string;
   manglik_status: string;
+  intro_video_status: string;
 }
 
 export const EMPTY_FORM: ProfileForm = {
@@ -208,6 +209,7 @@ export const EMPTY_FORM: ProfileForm = {
   willing_to_relocate: 'open',
   income_range: '$50k - $100k',
   manglik_status: 'no',
+  intro_video_status: '',
 };
 
 // ── Wizard step definitions ──────────────────────────────────────────────────
@@ -229,6 +231,7 @@ export const profileSteps: ProfileStepDef[] = [
   { key: 'astrology', title: 'Astrology', hint: 'Raasi and nakshatram', icon: 'star', fields: ['raasi_id', 'star_id'] },
   { key: 'location', title: 'Location', hint: 'Where you were born and live now', icon: 'location', fields: ['born_country_id', 'current_country_id', 'city_or_state'] },
   { key: 'media', title: 'Photos & Privacy', hint: 'Upload media and set privacy', icon: 'camera', fields: ['blur_photo', 'blur_horoscope'] },
+  { key: 'video', title: 'Introduction Video', hint: 'Upload a 1–3 min private intro video', icon: 'videocam', fields: ['intro_video_status'] },
   { key: 'bio', title: 'Bio & Review', hint: 'Tell your story', icon: 'document-text', fields: ['about_me'] },
 ];
 
@@ -340,6 +343,10 @@ export function validateProfileStep(step: number, form: ProfileForm): Record<str
       }
       case 'about_me': {
         const e = validateAboutMe(val); if (e) addError(field, e);
+        break;
+      }
+      case 'intro_video_status': {
+        if (!val) addError(field, 'An introduction video is mandatory');
         break;
       }
     }

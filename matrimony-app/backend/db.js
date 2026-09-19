@@ -95,6 +95,9 @@ async function initDB() {
         manglik_status VARCHAR(10) NOT NULL DEFAULT 'no',
         is_verified TINYINT NOT NULL DEFAULT 0,
         status ENUM('active','hidden') NOT NULL DEFAULT 'active',
+        intro_video_key TEXT,
+        intro_video_status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
+        intro_video_duration INT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (owner_user_id) REFERENCES users(id) ON DELETE CASCADE
       );
@@ -297,6 +300,11 @@ async function initDB() {
 
     await ensureColumn('users', 'email_verified', 'email_verified TINYINT NOT NULL DEFAULT 0');
     await ensureColumn('countries', 'name_ta', 'name_ta TEXT AFTER name_en');
+
+    // Intro video migration
+    await ensureColumn('profiles', 'intro_video_key', 'intro_video_key TEXT');
+    await ensureColumn('profiles', 'intro_video_status', "intro_video_status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending'");
+    await ensureColumn('profiles', 'intro_video_duration', 'intro_video_duration INT');
 
     // ─── Ensure all tables use utf8mb4 (fixes latin1 → Tamil stored as '?') ────
     async function ensureCharset(table) {

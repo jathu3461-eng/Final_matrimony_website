@@ -231,6 +231,16 @@ export const profileSteps = [
     }),
   },
   {
+    key: 'video',
+    title: 'Introduction Video',
+    hint: 'Upload a 1–3 min private intro video',
+    icon: 'Camera',
+    fields: ['intro_video_status'],
+    schema: z.object({
+      intro_video_status: z.string().min(1, 'An introduction video is mandatory'),
+    }),
+  },
+  {
     key: 'bio',
     title: 'Bio & Review',
     hint: 'Tell your story',

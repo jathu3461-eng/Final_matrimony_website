@@ -5,3 +5,5 @@ data/*.db-shm
 uploads/*
 !uploads/.gitkeep
 .env
+private_uploads/*
+!private_uploads/.gitkeep

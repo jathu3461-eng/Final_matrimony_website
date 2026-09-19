@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import {
@@ -27,6 +27,7 @@ import {
   Ban,
   ShieldOff,
   Search,
+  Video,
 } from 'lucide-react';
 import api, { uploadsUrl } from '../api';
 import { useAuth } from '../context/AuthContext';
@@ -36,6 +37,7 @@ const NAV_ITEMS = [
   { key: 'users', path: '/admin/users', label: 'User Management', icon: Users, desc: 'Ban or reinstate accounts' },
   { key: 'brokers', path: '/admin/brokers', label: 'Broker Approvals', icon: Building2, desc: 'Approve broker accounts' },
   { key: 'profiles', path: '/admin/profiles', label: 'Profile Verification', icon: BadgeCheck, desc: 'Verify member profiles' },
+  { key: 'videos', path: '/admin/videos', label: 'Intro Videos', icon: Video, desc: 'Review private videos' },
   { key: 'settings', path: '/admin/settings', label: 'Site Settings', icon: Settings, desc: 'Brand & contact details' },
   { key: 'menu', path: '/admin/menu', label: 'Menu Editor', icon: ListOrdered, desc: 'Navigation menu items' },
 ];
@@ -159,6 +161,7 @@ export default function AdminDashboard() {
               {section === 'users' && <UsersManagement />}
               {section === 'brokers' && <BrokerApprovals />}
               {section === 'profiles' && <ProfilesVerification />}
+              {section === 'videos' && <VideoReviews />}
               {section === 'settings' && <SiteSettings />}
               {section === 'menu' && <MenuEditor />}
             </motion.div>
@@ -630,6 +633,108 @@ function ProfilesVerification() {
               >
                 {p.is_verified ? <><RefreshCw className="w-4 h-4" /> Remove Verification</> : <><BadgeCheck className="w-4 h-4" /> Verify ID</>}
               </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Video Reviews ───────────────────────────────────────────────────────── */
+
+function VideoReviews() {
+  const [videos, setVideos] = useState(null);
+
+  const load = () => api.get('/admin/intro-videos/pending').then((res) => setVideos(res.data.videos)).catch(() => setVideos([]));
+  useEffect(() => { load(); }, []);
+
+  const updateStatus = async (p, status) => {
+    if (confirm(`Are you sure you want to ${status} this video?`)) {
+      await api.post(`/admin/intro-videos/${p.id}/status`, { intro_video_status: status });
+      load();
+    }
+  };
+
+  return (
+    <div className="rounded-2xl bg-white border border-pink-100/80 shadow-card overflow-hidden pb-12">
+      <div className="px-5 py-4 border-b border-pink-100/80 flex justify-between items-center">
+        <div>
+          <h3 className="font-display text-base font-extrabold text-slate-800">Introduction Videos</h3>
+          <p className="text-[11px] text-slate-400 font-medium">
+            Review private mandatory introduction videos. Ensure they are 1-3 minutes long and authentic.
+          </p>
+        </div>
+        <span className="text-[11px] font-bold px-3 py-1 rounded-full bg-amber-50 text-amber-600 border border-amber-200">
+          {videos === null ? '…' : videos.length} pending
+        </span>
+      </div>
+
+      {videos === null ? (
+        <div className="p-10 text-center text-slate-400 text-sm font-medium">Loading videos…</div>
+      ) : videos.length === 0 ? (
+        <div className="p-10 text-center">
+          <CheckCircle2 className="w-10 h-10 text-emerald-400 mx-auto" />
+          <p className="mt-3 text-sm font-bold text-slate-600">All caught up!</p>
+          <p className="text-xs text-slate-400 font-medium">No pending introduction videos to review right now.</p>
+        </div>
+      ) : (
+        <div className="divide-y divide-pink-50">
+          {videos.map((p) => (
+            <div key={p.id} className="p-5 flex flex-col xl:flex-row gap-6">
+              
+              {/* Video Player */}
+              <div className="w-full xl:w-80 shrink-0 bg-black rounded-xl overflow-hidden shadow-md aspect-video">
+                <video 
+                  src={`/api/profiles/${p.id}/intro-video-stream`}
+                  controls
+                  controlsList="nodownload"
+                  className="w-full h-full object-contain"
+                >
+                  Your browser does not support the video tag.
+                </video>
+              </div>
+
+              {/* Profile Details & Actions */}
+              <div className="flex-1 min-w-0 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between flex-wrap gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-11 h-11 rounded-full bg-gradient-to-br from-pink-200 to-rose-300 flex items-center justify-center font-display font-extrabold text-pink-800 shrink-0">
+                        {(p.name || '?')[0].toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="font-bold text-slate-700 text-base">{p.name}</p>
+                        <p className="text-xs text-slate-400 font-medium">
+                          @{p.username} · {p.intro_video_duration} seconds
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-4 text-sm text-slate-600 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                    <p><span className="font-semibold">Gender:</span> {p.gender === 'M' ? 'Male' : p.gender === 'F' ? 'Female' : 'N/A'}</p>
+                    <p><span className="font-semibold">DOB:</span> {p.date_of_birth}</p>
+                    <p><span className="font-semibold">City/State:</span> {p.city_or_state}</p>
+                  </div>
+                </div>
+
+                <div className="mt-5 flex gap-2 flex-wrap">
+                  <button
+                    onClick={() => updateStatus(p, 'approved')}
+                    className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 text-xs font-bold px-4 py-2.5 rounded-xl bg-emerald-500 text-white hover:bg-emerald-600 shadow-md shadow-emerald-500/30 transition-all hover:scale-[1.02]"
+                  >
+                    <CheckCircle2 className="w-4 h-4" /> Approve Video
+                  </button>
+                  <button
+                    onClick={() => updateStatus(p, 'rejected')}
+                    className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 text-xs font-bold px-4 py-2.5 rounded-xl border border-rose-300 text-rose-600 hover:bg-rose-50 transition-all"
+                  >
+                    <X className="w-4 h-4" /> Reject Video
+                  </button>
+                </div>
+              </div>
+
             </div>
           ))}
         </div>
