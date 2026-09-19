@@ -14,6 +14,7 @@ import { Screen } from '@/components/Screen';
 import { useAppSelector } from '@/store/hooks';
 import { useTheme } from '@/theme';
 import { radius, spacing, typography, layout } from '@/theme';
+import { formatHeight } from '@/utils/height';
 import type { Profile, ProfileMeta } from '@/types';
 import type { RootStackParamList } from '@/navigation/types';
 
@@ -227,7 +228,7 @@ export function ProfileDetailScreen() {
         </View>
 
         <Text style={[styles.subtitle, { color: colors.inkSoft }]}>
-          {p.age} yrs · {p.height_feet}'{p.height_inches ?? 0}" · {p.gender === 'M' ? 'Male' : 'Female'}
+          {p.age} yrs · {formatHeight(p.height_feet, p.height_inches)} · {p.gender === 'M' ? 'Male' : 'Female'}
         </Text>
 
         <View style={styles.metaGrid}>

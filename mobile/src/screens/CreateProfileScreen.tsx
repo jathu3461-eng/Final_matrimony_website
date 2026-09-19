@@ -23,6 +23,7 @@ import { profileApi } from '@/api/profiles';
 import { extractError } from '@/api/client';
 import { useTheme } from '@/theme';
 import { radius, spacing, typography, layout } from '@/theme';
+import HeightSelector from '@/components/HeightSelector';
 import {
   EMPTY_FORM,
   POSTED_BY,
@@ -321,24 +322,13 @@ export function CreateProfileScreen() {
       // Step 2: Height
       case 2:
         return (
-          <View style={styles.heightRow}>
-            <SelectField
-              label="Height (Feet)"
-              options={[3, 4, 5, 6, 7].map((n) => ({ value: String(n), label: `${n} ft` }))}
-              value={form.height_feet}
-              onChange={set('height_feet')}
-              error={touched.height_feet ? stepErrors.height_feet : null}
-              containerStyle={styles.heightInput}
-            />
-            <SelectField
-              label="Height (Inches)"
-              options={Array.from({ length: 12 }, (_, i) => ({ value: String(i), label: `${i} in` }))}
-              value={form.height_inches}
-              onChange={set('height_inches')}
-              error={touched.height_inches ? stepErrors.height_inches : null}
-              containerStyle={styles.heightInput}
-            />
-          </View>
+          <HeightSelector
+            feetValue={form.height_feet}
+            inchesValue={form.height_inches}
+            onChange={(vals) => setForm((f) => ({ ...f, height_feet: vals.feet, height_inches: vals.inches }))}
+            errorFeet={touched.height_feet ? stepErrors.height_feet : null}
+            errorInches={touched.height_inches ? stepErrors.height_inches : null}
+          />
         );
 
       // Step 3: Lifestyle

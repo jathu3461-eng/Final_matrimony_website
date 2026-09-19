@@ -5,6 +5,7 @@ import { Star, Heart, MessagesSquare, Lock, ShieldCheck } from 'lucide-react';
 import api, { uploadsUrl } from '../api';
 import { useAuth } from '../context/AuthContext';
 import { Button, Badge } from './ui';
+import { formatHeight } from '../lib/height';
 
 export default function ProfileCard({ profile, actions, onShortlistChange }) {
   const cardRef = useRef(null);
@@ -184,7 +185,7 @@ export default function ProfileCard({ profile, actions, onShortlistChange }) {
           </div>
 
           <p className="text-xs font-semibold text-[var(--ink-soft)] mb-1">
-            {profile.age ? `${profile.age} yrs` : 'Age N/A'} · {profile.height_feet}'{profile.height_inches}" · {profile.city_or_state || 'Diaspora'}
+            {profile.age ? `${profile.age} yrs` : 'Age N/A'} · {formatHeight(profile.height_feet, profile.height_inches)} · {profile.city_or_state || 'Diaspora'}
           </p>
 
           <p className="text-xs text-[var(--primary)] font-bold truncate">{profile.occupation}</p>

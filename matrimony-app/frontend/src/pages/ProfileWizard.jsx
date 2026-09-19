@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
-import { Button, Stepper, ProgressBar, Badge, ErrorCard, TextField, SelectField, TextareaField, useToast } from '../components/ui';
+import { Button, Stepper, ProgressBar, Badge, ErrorCard, TextField, SelectField, TextareaField, useToast, HeightSelector } from '../components/ui';
 import { profileSteps, validateStep, POSTED_BY } from '../lib/validation';
 
 const STEP_ICONS = { User, GraduationCap, Ruler, Heart, Wallet, Landmark, Star, MapPin, Camera, FileText };
@@ -517,22 +517,13 @@ export default function ProfileWizard() {
                   )}
 
                   {step === 2 && (
-                    <div className="grid grid-cols-2 gap-4">
-                      <SelectField
-                        label="Height (Feet)"
-                        options={[3, 4, 5, 6, 7].map((n) => ({ value: String(n), label: `${n} ft` }))}
-                        value={form.height_feet}
-                        onChange={set('height_feet')}
-                        name="height_feet"
-                        error={touched.height_feet && stepErrors.height_feet}
-                      />
-                      <SelectField
-                        label="Height (Inches)"
-                        options={Array.from({ length: 12 }, (_, i) => ({ value: String(i), label: `${i} in` }))}
-                        value={form.height_inches}
-                        onChange={set('height_inches')}
-                        name="height_inches"
-                        error={touched.height_inches && stepErrors.height_inches}
+                    <div className="w-full">
+                      <HeightSelector
+                        feetValue={form.height_feet}
+                        inchesValue={form.height_inches}
+                        onChange={(vals) => setForm((f) => ({ ...f, height_feet: vals.feet, height_inches: vals.inches }))}
+                        errorFeet={touched.height_feet && stepErrors.height_feet}
+                        errorInches={touched.height_inches && stepErrors.height_inches}
                       />
                     </div>
                   )}

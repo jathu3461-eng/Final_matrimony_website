@@ -22,6 +22,7 @@ import { FormField } from '@/components/FormField';
 import { Screen } from '@/components/Screen';
 import { SelectField } from '@/components/SelectField';
 import { Spinner } from '@/components/Spinner';
+import HeightSelector from '@/components/HeightSelector';
 import { useTheme } from '@/theme';
 import { radius, spacing, typography, layout } from '@/theme';
 import {
@@ -292,22 +293,11 @@ export function EditProfileScreen() {
 
           {/* Height */}
           <SectionHeader icon="resize" title="Height" colors={colors} />
-          <View style={styles.heightRow}>
-            <SelectField
-              label="Feet"
-              options={[3, 4, 5, 6, 7].map((n) => ({ value: String(n), label: `${n} ft` }))}
-              value={form.height_feet}
-              onChange={set('height_feet')}
-              containerStyle={styles.halfField}
-            />
-            <SelectField
-              label="Inches"
-              options={Array.from({ length: 12 }, (_, i) => ({ value: String(i), label: `${i} in` }))}
-              value={form.height_inches}
-              onChange={set('height_inches')}
-              containerStyle={styles.halfField}
-            />
-          </View>
+          <HeightSelector
+            feetValue={form.height_feet}
+            inchesValue={form.height_inches}
+            onChange={(vals) => setForm((f) => ({ ...f, height_feet: vals.feet, height_inches: vals.inches }))}
+          />
 
           {/* Education & Career */}
           <SectionHeader icon="school" title="Education & Career" colors={colors} />

@@ -1,4 +1,4 @@
-﻿import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
@@ -8,6 +8,7 @@ import api, { uploadsUrl } from '../api';
 import { useAuth } from '../context/AuthContext';
 import { useI18n } from '../context/I18nContext';
 import { Button, Badge, Spinner, ErrorCard } from '../components/ui';
+import { formatHeight } from '../lib/height';
 
 export default function ProfileDetail() {
   const { id } = useParams();
@@ -212,7 +213,7 @@ export default function ProfileDetail() {
               <div>
                 <h1 className="font-display text-3xl text-[var(--ink)] font-extrabold mb-1">{profile.name}</h1>
                 <p className="text-[var(--ink-soft)]">
-                  {profile.age} yrs · {profile.height_feet}'{profile.height_inches}" · {profile.gender === 'M' ? 'Groom' : 'Bride'}
+                  {profile.age} yrs · {formatHeight(profile.height_feet, profile.height_inches)} · {profile.gender === 'M' ? 'Male' : 'Female'}
                 </p>
               </div>
 

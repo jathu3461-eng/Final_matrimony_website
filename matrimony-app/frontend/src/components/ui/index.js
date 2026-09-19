@@ -13,3 +13,4 @@ export { default as ErrorCard } from './ErrorCard';
 export { default as Card } from './Card';
 export { default as TiltCard } from './TiltCard';
 export { ToastProvider, useToast } from './ToastContext';
+export { default as HeightSelector } from './HeightSelector';
