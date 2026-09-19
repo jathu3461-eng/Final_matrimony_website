@@ -451,7 +451,7 @@ export default function ProfileWizard() {
                           Gender<span className="text-[var(--error)]"> *</span>
                         </p>
                         <div className="grid grid-cols-3 gap-3">
-                          {[['M', 'Groom', User], ['F', 'Bride', Users], ['O', 'Other', UserRound]].map(([v, label, Icon]) => (
+                          {[['M', 'Male', User], ['F', 'Female', Users], ['O', 'Other', UserRound]].map(([v, label, Icon]) => (
                             <button
                               type="button"
                               key={v}
