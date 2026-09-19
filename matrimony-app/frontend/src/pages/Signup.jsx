@@ -254,13 +254,16 @@ export default function Signup() {
             />
           </motion.div>
 
-          <motion.div variants={fadeUp} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <motion.div variants={fadeUp}>
             <PhoneNumberField
               label={t('auth_mobile_label')}
               error={showErr('phone_number')}
               success={showSuccess('phone_number', touchedFields.phone_number) ? t('auth_valid') : undefined}
               {...register('phone_number')}
             />
+          </motion.div>
+
+          <motion.div variants={fadeUp}>
             <TextField
               label={t('auth_create_password')}
               type={showPw ? 'text' : 'password'}
