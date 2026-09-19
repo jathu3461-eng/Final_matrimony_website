@@ -46,7 +46,7 @@ jobs:
           EOF
 
       - name: 📦 Create deployment archive
-        run: cd matrimony-app/frontend/dist && tar czf /tmp/frontend.tar.gz .
+        run: tar czf frontend.tar.gz -C matrimony-app/frontend/dist .
 
       - name: 🚀 Upload frontend archive via SCP
         uses: appleboy/scp-action@v0.1.7
@@ -55,8 +55,8 @@ jobs:
           username: ${{ secrets.SSH_USERNAME }}
           password: ${{ secrets.SSH_PASSWORD }}
           port: 21098
-          source: "/tmp/frontend.tar.gz"
-          target: "/tmp/"
+          source: "frontend.tar.gz"
+          target: "~/"
 
       - name: 🚀 Extract and deploy frontend
         uses: appleboy/ssh-action@v1.0.3
@@ -66,12 +66,13 @@ jobs:
           password: ${{ secrets.SSH_PASSWORD }}
           port: 21098
           script: |
-            echo "🚀 Deploying frontend to /public_html/..."
-            cd /public_html
+            echo "🚀 Deploying frontend to ~/public_html/..."
+            mkdir -p ~/public_html
+            cd ~/public_html
             rm -f index.html .htaccess favicon.png
             rm -rf assets
-            tar xzf /tmp/frontend.tar.gz
-            rm /tmp/frontend.tar.gz
+            tar xzf ~/frontend.tar.gz
+            rm ~/frontend.tar.gz
             echo "✅ Frontend deployed successfully"
 
   # ─────────────────────────────────────────────────
@@ -99,10 +100,10 @@ jobs:
             # Always pull full repo then copy backend files to root
             echo "📦 Syncing code..."
             rm -rf _deploy_tmp
-            git clone --depth 1 https://github.com/jathu3461-eng/Matriomny.git _deploy_tmp
+            git clone --depth 1 https://github.com/jathu3461-eng/Final_matrimony_website.git _deploy_tmp
 
             # Copy backend files to app root (preserving uploads/ and data/ if they exist)
-            rsync -av --exclude='node_modules' --exclude='.git' --exclude='uploads' --exclude='data' _deploy_tmp/matrimony-app/backend/ ./
+            rsync -av --exclude='node_modules' --exclude='.git' --exclude='uploads' --exclude='data' _deploy_tmp/backend/ ./
             rm -rf _deploy_tmp
 
             # Install production dependencies
