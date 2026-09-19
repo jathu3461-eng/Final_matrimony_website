@@ -1,9 +1,9 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft, ArrowRight, Camera, Check, FileText, GraduationCap, Heart, Landmark,
-  MapPin, Ruler, Star, User, Users, Wallet, X, Save, ImagePlus,
+  MapPin, Ruler, Star, User, Users, UserRound, Wallet, X, Save, ImagePlus,
 } from 'lucide-react';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
@@ -450,8 +450,8 @@ export default function ProfileWizard() {
                         <p className="block text-xs font-bold text-[var(--ink-soft)] mb-1.5">
                           Gender<span className="text-[var(--error)]"> *</span>
                         </p>
-                        <div className="grid grid-cols-2 gap-3">
-                          {[['M', 'Groom', User], ['F', 'Bride', Users]].map(([v, label, Icon]) => (
+                        <div className="grid grid-cols-3 gap-3">
+                          {[['M', 'Groom', User], ['F', 'Bride', Users], ['O', 'Other', UserRound]].map(([v, label, Icon]) => (
                             <button
                               type="button"
                               key={v}
