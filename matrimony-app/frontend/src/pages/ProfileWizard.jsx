@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
-import { Button, Stepper, ProgressBar, Badge, ErrorCard, TextField, SelectField, TextareaField, useToast, HeightSelector } from '../components/ui';
+import { Button, Stepper, ProgressBar, Badge, ErrorCard, TextField, SelectField, SearchableSelect, TextareaField, useToast, HeightSelector } from '../components/ui';
 import { profileSteps, validateStep, POSTED_BY } from '../lib/validation';
 
 const STEP_ICONS = { User, GraduationCap, Ruler, Heart, Wallet, Landmark, Star, MapPin, Camera, FileText };
@@ -548,7 +548,7 @@ export default function ProfileWizard() {
 
                   {step === 5 && (
                     <>
-                      <SelectField
+                      <SearchableSelect
                         label="Religion"
                         options={(meta.religions || []).map((r) => ({ value: String(r.id), label: `${r.name_en} / ${r.name_ta}` }))}
                         value={form.religion_id}
@@ -558,7 +558,7 @@ export default function ProfileWizard() {
                         error={touched.religion_id && stepErrors.religion_id}
                         required
                       />
-                      <SelectField
+                      <SearchableSelect
                         label="Caste / Saathi"
                         options={(meta.castes || []).map((c) => ({ value: String(c.id), label: `${c.name_en} / ${c.name_ta}` }))}
                         value={form.caste_id}
@@ -581,7 +581,7 @@ export default function ProfileWizard() {
 
                   {step === 6 && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <SelectField
+                      <SearchableSelect
                         label="Zodiac / Raasi"
                         options={(meta.raasis || []).map((r) => ({ value: String(r.id), label: `${r.name_en} / ${r.name_ta}` }))}
                         value={form.raasi_id}
@@ -591,7 +591,7 @@ export default function ProfileWizard() {
                         error={touched.raasi_id && stepErrors.raasi_id}
                         required
                       />
-                      <SelectField
+                      <SearchableSelect
                         label="Star / Nakshatram"
                         options={(meta.stars || []).map((s) => ({ value: String(s.id), label: `${s.name_en} / ${s.name_ta}` }))}
                         value={form.star_id}
@@ -606,7 +606,7 @@ export default function ProfileWizard() {
 
                   {step === 7 && (
                     <>
-                      <SelectField
+                      <SearchableSelect
                         label="Country of Birth"
                         options={(meta.countries || []).map((c) => ({ value: c.code, label: c.name_ta ? `${c.name_en} / ${c.name_ta}` : c.name_en }))}
                         value={form.born_country_id}
@@ -616,7 +616,7 @@ export default function ProfileWizard() {
                         error={touched.born_country_id && stepErrors.born_country_id}
                         required
                       />
-                      <SelectField
+                      <SearchableSelect
                         label="Current Country of Residence"
                         options={(meta.countries || []).map((c) => ({ value: c.code, label: c.name_ta ? `${c.name_en} / ${c.name_ta}` : c.name_en }))}
                         value={form.current_country_id}

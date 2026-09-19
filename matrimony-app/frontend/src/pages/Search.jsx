@@ -5,7 +5,7 @@ import { Search as SearchIcon, SlidersHorizontal, RotateCcw, Users, Sparkles } f
 import api from '../api';
 import { useI18n } from '../context/I18nContext';
 import ProfileCard from '../components/ProfileCard';
-import { Button, Badge, Skeleton, ErrorCard, SelectField, TextField } from '../components/ui';
+import { Button, Badge, Skeleton, ErrorCard, SelectField, SearchableSelect, TextField } from '../components/ui';
 
 const DEFAULT_FILTERS = {
   gender: 'F', religion_id: '', caste_id: '', current_country_id: '',
@@ -171,14 +171,14 @@ export default function Search() {
               <div>
                 {sectionLabel('🕌', 'Religion & Caste')}
                 <div className="space-y-3">
-                  <SelectField
+                  <SearchableSelect
                     label="Religion"
                     value={filters.religion_id}
                     onChange={set('religion_id')}
                     placeholder="Any Religion"
                     options={(meta?.religions || []).map((r) => ({ value: String(r.id), label: `${r.name_en} / ${r.name_ta}` }))}
                   />
-                  <SelectField
+                  <SearchableSelect
                     label="Caste / Saathi"
                     value={filters.caste_id}
                     onChange={set('caste_id')}
@@ -190,7 +190,7 @@ export default function Search() {
 
               <div>
                 {sectionLabel('📍', 'Location')}
-                <SelectField
+                <SearchableSelect
                   label="Residing Country"
                   value={filters.current_country_id}
                   onChange={set('current_country_id')}
@@ -206,14 +206,14 @@ export default function Search() {
                 {sectionLabel('✨', 'Astrology & Lifestyle')}
                 <div className="space-y-3">
                   <div className="grid grid-cols-2 gap-2">
-                    <SelectField
+                    <SearchableSelect
                       label="Raasi"
                       value={filters.raasi_id}
                       onChange={set('raasi_id')}
                       placeholder="Any"
                       options={(meta?.raasis || []).map((r) => ({ value: String(r.id), label: `${r.name_en} / ${r.name_ta}` }))}
                     />
-                    <SelectField
+                    <SearchableSelect
                       label="Star"
                       value={filters.star_id}
                       onChange={set('star_id')}

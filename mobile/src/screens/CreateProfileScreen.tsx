@@ -17,6 +17,7 @@ import { Button } from '@/components/Button';
 import { FormField } from '@/components/FormField';
 import { Screen } from '@/components/Screen';
 import { SelectField } from '@/components/SelectField';
+import { SearchableSelect } from '@/components/SearchableSelect';
 import { ProgressBar } from '@/components/ProgressBar';
 import { StepIndicator } from '@/components/StepIndicator';
 import { profileApi } from '@/api/profiles';
@@ -387,7 +388,7 @@ export function CreateProfileScreen() {
       case 5:
         return (
           <>
-            <SelectField
+            <SearchableSelect
               label="Religion"
               options={(meta?.religions || []).map((r) => ({
                 value: String(r.id),
@@ -398,7 +399,7 @@ export function CreateProfileScreen() {
               error={touched.religion_id ? stepErrors.religion_id : null}
               required
             />
-            <SelectField
+            <SearchableSelect
               label="Caste / Saathi"
               options={(meta?.castes || []).map((c) => ({
                 value: String(c.id),
@@ -423,7 +424,7 @@ export function CreateProfileScreen() {
       case 6:
         return (
           <View style={styles.heightRow}>
-            <SelectField
+            <SearchableSelect
               label="Zodiac / Raasi"
               options={(meta?.raasis || []).map((r) => ({
                 value: String(r.id),
@@ -435,7 +436,7 @@ export function CreateProfileScreen() {
               required
               containerStyle={styles.heightInput}
             />
-            <SelectField
+            <SearchableSelect
               label="Star / Nakshatram"
               options={(meta?.stars || []).map((s) => ({
                 value: String(s.id),
@@ -454,7 +455,7 @@ export function CreateProfileScreen() {
       case 7:
         return (
           <>
-            <SelectField
+            <SearchableSelect
               label="Country of Birth"
               options={(meta?.countries || []).map((c) => ({
                 value: c.code,
@@ -465,7 +466,7 @@ export function CreateProfileScreen() {
               error={touched.born_country_id ? stepErrors.born_country_id : null}
               required
             />
-            <SelectField
+            <SearchableSelect
               label="Current Country of Residence"
               options={(meta?.countries || []).map((c) => ({
                 value: c.code,

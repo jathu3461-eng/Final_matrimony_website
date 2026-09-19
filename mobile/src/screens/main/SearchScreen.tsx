@@ -17,6 +17,7 @@ import { ProfileCard } from '@/components/ProfileCard';
 import { Screen } from '@/components/Screen';
 import { Button } from '@/components/Button';
 import { SelectField } from '@/components/SelectField';
+import { SearchableSelect } from '@/components/SearchableSelect';
 import { useTheme } from '@/theme';
 import { radius, spacing, typography, layout } from '@/theme';
 import type { ProfileMeta } from '@/types';
@@ -206,7 +207,7 @@ export function SearchScreen() {
             </View>
           </View>
 
-          <SelectField
+          <SearchableSelect
             label="Religion"
             options={(metaData?.religions || []).map((r) => ({
               value: String(r.id),
@@ -217,7 +218,7 @@ export function SearchScreen() {
             placeholder="Any religion"
           />
 
-          <SelectField
+          <SearchableSelect
             label="Caste"
             options={(metaData?.castes || []).map((c) => ({
               value: String(c.id),
@@ -228,7 +229,7 @@ export function SearchScreen() {
             placeholder="Any caste"
           />
 
-          <SelectField
+          <SearchableSelect
             label="Country"
             options={(metaData?.countries || []).map((c) => ({
               value: c.code,
@@ -241,7 +242,7 @@ export function SearchScreen() {
 
           <View style={styles.ageRow}>
             <View style={styles.ageInput}>
-              <SelectField
+              <SearchableSelect
                 label="Raasi"
                 options={(metaData?.raasis || []).map((r) => ({
                   value: String(r.id),
@@ -253,7 +254,7 @@ export function SearchScreen() {
               />
             </View>
             <View style={styles.ageInput}>
-              <SelectField
+              <SearchableSelect
                 label="Star"
                 options={(metaData?.stars || []).map((s) => ({
                   value: String(s.id),

@@ -21,6 +21,7 @@ import { Button } from '@/components/Button';
 import { FormField } from '@/components/FormField';
 import { Screen } from '@/components/Screen';
 import { SelectField } from '@/components/SelectField';
+import { SearchableSelect } from '@/components/SearchableSelect';
 import { Spinner } from '@/components/Spinner';
 import HeightSelector from '@/components/HeightSelector';
 import { useTheme } from '@/theme';
@@ -357,7 +358,7 @@ export function EditProfileScreen() {
 
           {/* Religion & Caste */}
           <SectionHeader icon="library" title="Religion & Caste" colors={colors} />
-          <SelectField
+          <SearchableSelect
             label="Religion"
             options={(metaData?.religions || []).map((r) => ({
               value: String(r.id),
@@ -366,7 +367,7 @@ export function EditProfileScreen() {
             value={form.religion_id}
             onChange={set('religion_id')}
           />
-          <SelectField
+          <SearchableSelect
             label="Caste"
             options={(metaData?.castes || []).map((c) => ({
               value: String(c.id),
@@ -386,7 +387,7 @@ export function EditProfileScreen() {
           {/* Astrology */}
           <SectionHeader icon="star" title="Astrology" colors={colors} />
           <View style={styles.heightRow}>
-            <SelectField
+            <SearchableSelect
               label="Raasi / Zodiac"
               options={(metaData?.raasis || []).map((r) => ({
                 value: String(r.id),
@@ -396,7 +397,7 @@ export function EditProfileScreen() {
               onChange={set('raasi_id')}
               containerStyle={styles.halfField}
             />
-            <SelectField
+            <SearchableSelect
               label="Star / Nakshatram"
               options={(metaData?.stars || []).map((s) => ({
                 value: String(s.id),
@@ -410,7 +411,7 @@ export function EditProfileScreen() {
 
           {/* Location */}
           <SectionHeader icon="location" title="Location" colors={colors} />
-          <SelectField
+          <SearchableSelect
             label="Country of Birth"
             options={(metaData?.countries || []).map((c) => ({
               value: c.code,
@@ -419,7 +420,7 @@ export function EditProfileScreen() {
             value={form.born_country_id}
             onChange={set('born_country_id')}
           />
-          <SelectField
+          <SearchableSelect
             label="Current Country"
             options={(metaData?.countries || []).map((c) => ({
               value: c.code,
