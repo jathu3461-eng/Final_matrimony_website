@@ -81,6 +81,11 @@ app.use((err, req, res, next) => {
 dbReady.then(() => {
   const server = http.createServer(app);
   initSocket(server);
+
+  // Allow up to 30 minutes for large video uploads
+  server.timeout = 30 * 60 * 1000;        // 30 min
+  server.keepAliveTimeout = 30 * 60 * 1000;
+
   server.listen(PORT, () => {
     console.log(`✅ Matrimony API server running on http://localhost:${PORT}`);
   });

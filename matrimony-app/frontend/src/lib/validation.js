@@ -237,7 +237,11 @@ export const profileSteps = [
     icon: 'Camera',
     fields: ['intro_video_status'],
     schema: z.object({
-      intro_video_status: z.string().min(1, 'An introduction video is mandatory'),
+      // 'selected' = user picked a file; 'uploaded' = already on server; 'skipped' = user acknowledged but skipped
+      intro_video_status: z.string().refine(
+        (v) => ['selected', 'uploaded', 'skipped'].includes(v),
+        { message: 'Please select or upload an introduction video, or choose to skip' }
+      ),
     }),
   },
   {

@@ -4,7 +4,9 @@ import Button from './Button';
 
 export default function IntroVideoStep({ 
   hasExisting, 
-  onVideoSelected, 
+  onVideoSelected,
+  onSkip,
+  isSkipped,
   error 
 }) {
   const [mode, setMode] = useState(null); // 'record', 'preview', null
@@ -273,12 +275,17 @@ export default function IntroVideoStep({
                 <span className="text-xs">You can replace it below</span>
               </div>
             )}
+            {isSkipped && (
+              <div className="bg-amber-50 text-amber-700 p-4 rounded-xl flex justify-between items-center mb-2 border border-amber-200">
+                <span className="font-bold flex items-center gap-2">⚠️ Video skipped — you can still upload one</span>
+              </div>
+            )}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <label className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-[var(--primary)] bg-[var(--primary-soft)] rounded-xl cursor-pointer hover:bg-[var(--primary)] hover:bg-opacity-10 transition-colors">
                 <Upload className="w-8 h-8 text-[var(--primary-strong)] mb-2" />
                 <span className="font-bold text-[var(--primary-strong)]">Choose from device</span>
                 <span className="text-[11px] text-[var(--primary-strong)] opacity-80 mt-1">MP4, MOV up to 3GB</span>
-                <input type="file" accept="video/mp4,video/quicktime,video/webm" className="hidden" onChange={handleFileChange} />
+                <input type="file" accept="video/mp4,video/quicktime,video/webm,video/x-matroska,.mkv" className="hidden" onChange={handleFileChange} />
               </label>
 
               <button
@@ -291,6 +298,19 @@ export default function IntroVideoStep({
                 <span className="text-[11px] text-[var(--ink-faint)] mt-1">Use your webcam</span>
               </button>
             </div>
+
+            {/* Skip option */}
+            {onSkip && !hasExisting && (
+              <div className="mt-2 text-center">
+                <button
+                  type="button"
+                  onClick={onSkip}
+                  className="text-xs text-[var(--ink-faint)] hover:text-[var(--ink-soft)] underline underline-offset-2 transition-colors"
+                >
+                  Skip for now (you can add it later from Edit Profile)
+                </button>
+              </div>
+            )}
           </div>
         )}
 

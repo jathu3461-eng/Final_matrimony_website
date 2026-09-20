@@ -160,6 +160,8 @@ export default function ProfileWizard() {
   const [existingHoroscope, setExistingHoroscope] = useState(null);
   const [introVideoFile, setIntroVideoFile] = useState(null);
   const [introVideoDuration, setIntroVideoDuration] = useState(0);
+  const [videoUploadProgress, setVideoUploadProgress] = useState(0);
+  const [videoUploading, setVideoUploading] = useState(false);
   const [draftStatus, setDraftStatus] = useState('');
   const contentRef = useRef(null);
   const [userId, setUserId] = useState('anon');
@@ -339,11 +341,31 @@ export default function ProfileWizard() {
       }
 
       if (introVideoFile) {
+        setVideoUploading(true);
+        setVideoUploadProgress(0);
         const videoFd = new FormData();
         videoFd.append('intro_video', introVideoFile);
-        videoFd.append('duration_seconds', introVideoDuration);
-        await api.post(`/profiles/${profileId}/intro-video`, videoFd, { headers: { 'Content-Type': 'multipart/form-data' } });
-        toast.success('Introduction video uploaded successfully!');
+        videoFd.append('duration_seconds', String(introVideoDuration));
+        try {
+          await api.post(`/profiles/${profileId}/intro-video`, videoFd, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+            timeout: 30 * 60 * 1000, // 30 min timeout for large videos
+            onUploadProgress: (e) => {
+              const pct = e.total ? Math.round((e.loaded * 100) / e.total) : 0;
+              setVideoUploadProgress(pct);
+            },
+          });
+          toast.success('Introduction video uploaded successfully!');
+        } catch (videoErr) {
+          console.error('Video upload failed:', videoErr.response?.data || videoErr.message);
+          const vMsg = videoErr.response?.data?.error || 'Video upload failed. Please try again.';
+          toast.error(vMsg);
+          setServerError(vMsg);
+          setVideoUploading(false);
+          setSubmitting(false);
+          return; // don't navigate away if video failed
+        }
+        setVideoUploading(false);
       }
 
       navigate('/dashboard');
@@ -727,16 +749,24 @@ export default function ProfileWizard() {
                   )}
 
                   {step === 9 && (
-                    <IntroVideoStep 
-                      hasExisting={form.intro_video_status === 'uploaded'}
-                      onVideoSelected={(file, duration) => {
-                        setIntroVideoFile(file);
-                        setIntroVideoDuration(duration);
-                        setForm(f => ({ ...f, intro_video_status: file ? 'selected' : (f.intro_video_status === 'uploaded' ? 'uploaded' : '') }));
-                        if (file) setTouched(t => ({ ...t, intro_video_status: true }));
-                      }}
-                      error={touched.intro_video_status && stepErrors.intro_video_status}
-                    />
+                    <>
+                      <IntroVideoStep 
+                        hasExisting={form.intro_video_status === 'uploaded'}
+                        onVideoSelected={(file, duration) => {
+                          setIntroVideoFile(file);
+                          setIntroVideoDuration(duration);
+                          setForm(f => ({ ...f, intro_video_status: file ? 'selected' : (f.intro_video_status === 'uploaded' ? 'uploaded' : '') }));
+                          if (file) setTouched(t => ({ ...t, intro_video_status: true }));
+                        }}
+                        onSkip={() => {
+                          setIntroVideoFile(null);
+                          setForm(f => ({ ...f, intro_video_status: 'skipped' }));
+                          setTouched(t => ({ ...t, intro_video_status: true }));
+                        }}
+                        isSkipped={form.intro_video_status === 'skipped'}
+                        error={touched.intro_video_status && stepErrors.intro_video_status}
+                      />
+                    </>
                   )}
 
                   {step === 10 && (
@@ -767,14 +797,36 @@ export default function ProfileWizard() {
               </motion.div>
             </AnimatePresence>
 
+            {/* Video Upload Progress */}
+            {videoUploading && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                <div className="bg-white rounded-2xl shadow-2xl p-8 w-[90%] max-w-sm flex flex-col items-center gap-4">
+                  <div className="w-14 h-14 rounded-full bg-pink-50 flex items-center justify-center">
+                    <Camera className="w-7 h-7 text-[var(--primary)]" />
+                  </div>
+                  <div className="text-center">
+                    <p className="font-bold text-slate-800 text-base">Uploading Video…</p>
+                    <p className="text-xs text-slate-400 mt-1">Please wait, do not close this page</p>
+                  </div>
+                  <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-pink-400 to-rose-500 rounded-full transition-all duration-300"
+                      style={{ width: `${videoUploadProgress}%` }}
+                    />
+                  </div>
+                  <p className="font-bold text-[var(--primary)] text-lg">{videoUploadProgress}%</p>
+                </div>
+              </div>
+            )}
+
             {/* Nav */}
             <div className="wizard-footer">
-              <Button variant="secondary" onClick={goBack} disabled={step === 0}>
+              <Button variant="secondary" onClick={goBack} disabled={step === 0 || submitting}>
                 <ArrowLeft className="w-4 h-4" aria-hidden="true" />
                 Back
               </Button>
               {step < profileSteps.length - 1 ? (
-                <Button onClick={goNext}>
+                <Button onClick={goNext} disabled={submitting}>
                   Continue
                   <ArrowRight className="w-4 h-4" aria-hidden="true" />
                 </Button>
