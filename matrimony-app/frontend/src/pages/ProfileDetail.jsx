@@ -4,7 +4,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   Star, Heart, MessagesSquare, Lock, ShieldCheck, Sparkles, ChevronDown, ArrowLeft,
 } from 'lucide-react';
-import api, { uploadsUrl } from '../api';
+import api, { uploadsUrl, apiUrl } from '../api';
 import { useAuth } from '../context/AuthContext';
 import { useI18n } from '../context/I18nContext';
 import { Button, Badge, Spinner, ErrorCard } from '../components/ui';
@@ -257,6 +257,28 @@ export default function ProfileDetail() {
 
             <h2 className="font-display text-lg text-[var(--ink)] font-bold mb-2">About</h2>
             <p className="text-[var(--ink-soft)] leading-relaxed mb-6 break-all">{profile.about_me}</p>
+
+            {/* Intro Video (Only visible to owner/admin) */}
+            {profile.has_intro_video && profile.intro_video_status && (
+              <div className="mb-6">
+                <div className="flex items-center gap-2 mb-2">
+                  <h2 className="font-display text-lg text-[var(--ink)] font-bold">Introduction Video</h2>
+                  {profile.intro_video_status === 'pending' && <Badge size="sm" variant="warning">Pending Review</Badge>}
+                  {profile.intro_video_status === 'approved' && <Badge size="sm" variant="success">Approved</Badge>}
+                  {profile.intro_video_status === 'rejected' && <Badge size="sm" variant="danger">Rejected</Badge>}
+                </div>
+                <div className="w-full sm:w-96 bg-black rounded-xl overflow-hidden shadow-md aspect-video">
+                  <video 
+                    src={apiUrl(`/profiles/${profile.id}/intro-video-stream`)}
+                    controls
+                    controlsList="nodownload"
+                    className="w-full h-full object-contain"
+                  >
+                    Your browser does not support the video tag.
+                  </video>
+                </div>
+              </div>
+            )}
 
             {/* Horoscope Access */}
             {profile.horoscope_chart ? (

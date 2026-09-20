@@ -27,6 +27,12 @@ export const uploadsUrl = (name) => {
   return `${origin}/uploads/${name}`;
 };
 
+// Builds a full URL for API endpoints (useful for <video src="...">, etc.)
+export const apiUrl = (path) => {
+  const p = path.startsWith('/') ? path : `/${path}`;
+  return `${apiBase}${p}`;
+};
+
 // Socket.IO server lives on the same origin as the REST API.
 // e.g. VITE_API_URL=https://api.mukurtham.ca/api -> https://api.mukurtham.ca
 export const socketUrl = () => {

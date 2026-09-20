@@ -29,7 +29,7 @@ import {
   Search,
   Video,
 } from 'lucide-react';
-import api, { uploadsUrl } from '../api';
+import api, { uploadsUrl, apiUrl } from '../api';
 import { useAuth } from '../context/AuthContext';
 
 const NAV_ITEMS = [
@@ -686,7 +686,7 @@ function VideoReviews() {
               {/* Video Player */}
               <div className="w-full xl:w-80 shrink-0 bg-black rounded-xl overflow-hidden shadow-md aspect-video">
                 <video 
-                  src={`/api/profiles/${p.id}/intro-video-stream`}
+                  src={apiUrl(`/profiles/${p.id}/intro-video-stream`)}
                   controls
                   controlsList="nodownload"
                   className="w-full h-full object-contain"

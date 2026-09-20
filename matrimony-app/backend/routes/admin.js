@@ -166,7 +166,7 @@ router.post('/profiles/:id/unverify', async (req, res) => {
 
 // ── Introduction Video Verification ───────────────────────────────────────────
 
-router.get('/intro-videos', async (req, res) => {
+router.get('/intro-videos/pending', async (req, res) => {
   try {
     const profiles = await db.all(`
       SELECT p.id, p.name, p.intro_video_status, p.intro_video_duration, p.created_at,
@@ -177,19 +177,19 @@ router.get('/intro-videos', async (req, res) => {
       ORDER BY p.intro_video_status = 'pending' DESC, p.created_at DESC
       LIMIT 100
     `);
-    res.json({ profiles });
+    res.json({ videos: profiles });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-router.post('/profiles/:id/intro-video/status', async (req, res) => {
+router.post('/intro-videos/:id/status', async (req, res) => {
   try {
-    const { status } = req.body;
-    if (!['approved', 'rejected', 'pending'].includes(status)) {
+    const { intro_video_status } = req.body;
+    if (!['approved', 'rejected', 'pending'].includes(intro_video_status)) {
       return res.status(400).json({ error: 'Invalid status' });
     }
-    const result = await db.run('UPDATE profiles SET intro_video_status = ? WHERE id = ?', [status, req.params.id]);
+    const result = await db.run('UPDATE profiles SET intro_video_status = ? WHERE id = ?', [intro_video_status, req.params.id]);
     if (result.changes === 0) return res.status(404).json({ error: 'Profile not found' });
-    res.json({ ok: true, intro_video_status: status });
+    res.json({ ok: true, intro_video_status });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
