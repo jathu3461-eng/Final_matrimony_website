@@ -73,17 +73,32 @@ const storage = multer.diskStorage({
 });
 
 function fileFilter(req, file, cb) {
-  const photoTypes = ['.jpg', '.jpeg', '.png'];
-  const horoscopeTypes = ['.jpg', '.jpeg', '.png', '.pdf'];
+  const photoTypes = ['.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif', '.jfif', '.avif'];
+  const horoscopeTypes = ['.jpg', '.jpeg', '.png', '.pdf', '.webp', '.heic', '.heif'];
   const ext = path.extname(file.originalname).toLowerCase();
   if (file.fieldname === 'main_profile_picture' && !photoTypes.includes(ext))
-    return cb(new Error('Invalid Format. Photo must be .jpg, .jpeg, or .png'));
+    return cb(new Error('Invalid Format. Photo must be .jpg, .jpeg, .png, .webp, or .heic'));
   if (file.fieldname === 'horoscope_chart' && !horoscopeTypes.includes(ext))
-    return cb(new Error('Invalid Format. Horoscope must be .jpg, .png, or .pdf'));
+    return cb(new Error('Invalid Format. Horoscope must be .jpg, .png, .pdf, or .webp'));
   cb(null, true);
 }
 
-const upload = multer({ storage, fileFilter, limits: { fileSize: 8 * 1024 * 1024 } });
+const upload = multer({ storage, fileFilter, limits: { fileSize: 50 * 1024 * 1024 } }); // 50MB for photos/horoscope
+
+const uploadFieldsMiddleware = (req, res, next) => {
+  upload.fields([
+    { name: 'main_profile_picture', maxCount: 1 },
+    { name: 'horoscope_chart', maxCount: 1 },
+  ])(req, res, (err) => {
+    if (err) {
+      if (err instanceof multer.MulterError) {
+        return res.status(400).json({ error: `File upload error: ${err.message}` });
+      }
+      return res.status(400).json({ error: err.message });
+    }
+    next();
+  });
+};
 
 const videoStorage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, privateVideoDir),
@@ -94,7 +109,7 @@ const videoStorage = multer.diskStorage({
 });
 
 function videoFilter(req, file, cb) {
-  const allowed = ['.mp4', '.mov', '.webm'];
+  const allowed = ['.mp4', '.mov', '.webm', '.mkv', '.3gp'];
   const ext = path.extname(file.originalname).toLowerCase();
   if (!allowed.includes(ext)) {
     return cb(new Error('Invalid Format. Video must be .mp4, .mov, or .webm'));
@@ -103,6 +118,18 @@ function videoFilter(req, file, cb) {
 }
 
 const uploadVideo = multer({ storage: videoStorage, fileFilter: videoFilter, limits: { fileSize: 3 * 1024 * 1024 * 1024 } }); // 3GB
+
+const uploadVideoMiddleware = (req, res, next) => {
+  uploadVideo.single('intro_video')(req, res, (err) => {
+    if (err) {
+      if (err instanceof multer.MulterError) {
+        return res.status(400).json({ error: `Video upload error: ${err.message}` });
+      }
+      return res.status(400).json({ error: err.message });
+    }
+    next();
+  });
+};
 
 function calcAge(dob) {
   const birth = new Date(dob);
@@ -278,10 +305,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST /api/profiles
-router.post('/', requireAuth, upload.fields([
-  { name: 'main_profile_picture', maxCount: 1 },
-  { name: 'horoscope_chart', maxCount: 1 },
-]), async (req, res) => {
+router.post('/', requireAuth, uploadFieldsMiddleware, async (req, res) => {
   try {
     const errors = validateProfile(req.body);
     if (Object.keys(errors).length) return res.status(400).json({ errors });
@@ -321,10 +345,7 @@ router.post('/', requireAuth, upload.fields([
 });
 
 // PUT /api/profiles/:id
-router.put('/:id', requireAuth, upload.fields([
-  { name: 'main_profile_picture', maxCount: 1 },
-  { name: 'horoscope_chart', maxCount: 1 },
-]), async (req, res) => {
+router.put('/:id', requireAuth, uploadFieldsMiddleware, async (req, res) => {
   try {
     const existing = await db.get('SELECT * FROM profiles WHERE id = ?', [req.params.id]);
     if (!existing) return res.status(404).json({ error: 'Profile not found' });
@@ -372,7 +393,7 @@ router.delete('/:id', requireAuth, async (req, res) => {
 });
 
 // POST /api/profiles/:id/intro-video
-router.post('/:id/intro-video', requireAuth, uploadVideo.single('intro_video'), async (req, res) => {
+router.post('/:id/intro-video', requireAuth, uploadVideoMiddleware, async (req, res) => {
   try {
     const existing = await db.get('SELECT * FROM profiles WHERE id = ?', [req.params.id]);
     if (!existing) return res.status(404).json({ error: 'Profile not found' });

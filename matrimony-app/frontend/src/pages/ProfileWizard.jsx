@@ -5,7 +5,7 @@ import {
   ArrowLeft, ArrowRight, Camera, Check, FileText, GraduationCap, Heart, Landmark,
   MapPin, Ruler, Star, User, Users, UserRound, Wallet, X, Save, ImagePlus,
 } from 'lucide-react';
-import api from '../api';
+import api, { uploadsUrl } from '../api';
 import { useAuth } from '../context/AuthContext';
 import { Button, Stepper, ProgressBar, Badge, ErrorCard, TextField, SelectField, SearchableSelect, TextareaField, useToast, HeightSelector } from '../components/ui';
 import IntroVideoStep from '../components/ui/IntroVideoStep';
@@ -88,9 +88,35 @@ function ToggleRow({ label, hint, checked, onChange }) {
 }
 
 function PhotoField({ label, accept, file, onFile, existing }) {
+  const [preview, setPreview] = useState(null);
+
+  useEffect(() => {
+    if (file) {
+      const url = URL.createObjectURL(file);
+      setPreview(url);
+      return () => URL.revokeObjectURL(url);
+    } else {
+      setPreview(null);
+    }
+  }, [file]);
+
+  const displayUrl = preview || (existing ? uploadsUrl(existing) : null);
+
   return (
     <div>
       <label className="block text-xs font-bold text-[var(--ink-soft)] mb-1.5">{label}</label>
+      {displayUrl && (
+        <div className="mb-2 relative w-24 h-24 rounded-xl overflow-hidden border-2 border-[var(--border)] shadow-sm bg-[var(--surface-soft)] flex items-center justify-center">
+          {existing?.endsWith('.pdf') && !preview ? (
+            <div className="text-center p-2">
+              <FileText className="w-8 h-8 mx-auto text-[var(--primary)]" />
+              <span className="text-[10px] font-bold block text-[var(--ink-soft)]">PDF</span>
+            </div>
+          ) : (
+            <img src={displayUrl} alt="Preview" className="w-full h-full object-cover" />
+          )}
+        </div>
+      )}
       <div className="relative">
         <input
           type="file"
@@ -101,7 +127,7 @@ function PhotoField({ label, accept, file, onFile, existing }) {
       </div>
       {file && (
         <p className="text-[11px] font-semibold text-[var(--success)] mt-1 flex items-center gap-1">
-          <Check className="w-3.5 h-3.5" aria-hidden="true" /> {file.name}
+          <Check className="w-3.5 h-3.5" aria-hidden="true" /> {file.name} ({(file.size / (1024 * 1024)).toFixed(1)} MB)
         </p>
       )}
       {!file && existing && (
@@ -195,7 +221,7 @@ export default function ProfileWizard() {
         diet: p.diet || 'any', family_values: p.family_values || 'moderate',
         career_goals: p.career_goals || 'working', willing_to_relocate: p.willing_to_relocate || 'open',
         income_range: p.income_range || '$50k - $100k', manglik_status: p.manglik_status || 'no',
-        intro_video_status: p.has_intro_video ? 'uploaded' : '',
+        intro_video_status: p.has_intro_video ? 'uploaded' : 'skipped',
       });
       setExistingPhoto(p.main_profile_picture);
       setExistingHoroscope(p.horoscope_chart);
@@ -668,15 +694,15 @@ export default function ProfileWizard() {
                     <div className="wizard-fields">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                         <PhotoField
-                          label="Main Profile Photo (.jpg, .jpeg, .png)"
-                          accept=".jpg,.jpeg,.png"
+                          label="Main Profile Photo (Images up to 50MB)"
+                          accept=".jpg,.jpeg,.png,.webp,.heic,.heif,.jfif,.avif"
                           file={photoFile}
                           onFile={setPhotoFile}
                           existing={existingPhoto}
                         />
                         <PhotoField
-                          label="Horoscope Chart (.jpg, .png, .pdf)"
-                          accept=".jpg,.jpeg,.png,.pdf"
+                          label="Horoscope Chart (Image or PDF up to 50MB)"
+                          accept=".jpg,.jpeg,.png,.pdf,.webp,.heic,.heif"
                           file={horoscopeFile}
                           onFile={setHoroscopeFile}
                           existing={existingHoroscope}
