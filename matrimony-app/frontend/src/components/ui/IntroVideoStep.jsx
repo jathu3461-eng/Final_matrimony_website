@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Camera, Upload, X, Play, RefreshCcw, Check } from 'lucide-react';
+import { Camera, Upload, X, Play, RefreshCcw, Check, Loader2 } from 'lucide-react';
 import Button from './Button';
+import api from '../../api';
 
 export default function IntroVideoStep({ 
   hasExisting, 
@@ -17,6 +18,11 @@ export default function IntroVideoStep({
   const [previewUrl, setPreviewUrl] = useState(null);
   const [cameraError, setCameraError] = useState(null); // null | 'denied' | 'unavailable' | 'https'
   
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadError, setUploadError] = useState('');
+  const [tempKey, setTempKey] = useState(null);
+
   const videoRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const timerRef = useRef(null);
@@ -111,13 +117,54 @@ export default function IntroVideoStep({
     stopCamera();
   };
 
+  const uploadVideoFile = async (file, durationVal) => {
+    setUploading(true);
+    setUploadProgress(0);
+    setUploadError('');
+    setTempKey(null);
+    
+    try {
+      const CHUNK_SIZE = 2 * 1024 * 1024; // 2MB
+      const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+      const uploadId = Date.now().toString();
+      const fileName = file.name || 'video.mp4';
+      
+      let finalKey = null;
+
+      for (let i = 0; i < totalChunks; i++) {
+        const start = i * CHUNK_SIZE;
+        const end = Math.min(start + CHUNK_SIZE, file.size);
+        const chunk = file.slice(start, end);
+        
+        const response = await api.post(`/profiles/upload-chunk?uploadId=${uploadId}&chunkIndex=${i}&totalChunks=${totalChunks}&fileName=${encodeURIComponent(fileName)}`, chunk, {
+          headers: { 'Content-Type': 'application/octet-stream' }
+        });
+        
+        setUploadProgress(Math.round(((i + 1) / totalChunks) * 100));
+        
+        if (i === totalChunks - 1) {
+          finalKey = response.data.temp_video_key;
+        }
+      }
+      
+      setTempKey(finalKey);
+      setUploading(false);
+      onVideoSelected(null, durationVal, finalKey);
+    } catch (err) {
+      console.error(err);
+      setUploadError('Failed to upload video securely. Please check your connection and try again.');
+      setUploading(false);
+      onVideoSelected(null, 0, null);
+    }
+  };
+
   useEffect(() => {
     if (mode === 'preview' && recordedChunks.length > 0 && !previewUrl) {
       const blob = new Blob(recordedChunks, { type: 'video/webm' });
       const url = URL.createObjectURL(blob);
       setPreviewUrl(url);
       const file = new File([blob], 'intro-video.webm', { type: 'video/webm' });
-      onVideoSelected(file, duration);
+      uploadVideoFile(file, duration);
     }
   }, [mode, recordedChunks]);
 
@@ -136,7 +183,7 @@ export default function IntroVideoStep({
       setPreviewUrl(URL.createObjectURL(file));
       setDuration(vidDuration);
       setMode('preview');
-      onVideoSelected(file, vidDuration);
+      uploadVideoFile(file, vidDuration);
     };
     tempVideo.src = url;
   };
@@ -151,11 +198,14 @@ export default function IntroVideoStep({
     stopCamera();
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl(null);
+    setMode(null);
     setRecordedChunks([]);
     setDuration(0);
-    setMode(null);
-    setCameraError(null);
-    onVideoSelected(null, 0);
+    setTempKey(null);
+    setUploadProgress(0);
+    setUploading(false);
+    setUploadError('');
+    onVideoSelected(null, 0, null);
   };
 
   const CAMERA_ERROR_INFO = {
@@ -349,8 +399,23 @@ export default function IntroVideoStep({
           <div className="flex flex-col items-center">
             <div className="relative w-full max-w-lg aspect-video bg-black rounded-xl overflow-hidden mb-4 border border-[var(--border)]">
               <video src={previewUrl} className="w-full h-full object-contain" controls playsInline />
+              
+              {uploading && (
+                <div className="absolute inset-0 bg-black/70 backdrop-blur-sm flex flex-col items-center justify-center p-6 z-10">
+                  <Loader2 className="w-10 h-10 text-[var(--primary)] animate-spin mb-4" />
+                  <p className="text-white font-bold mb-2">Uploading Video...</p>
+                  <div className="w-full max-w-xs bg-slate-700 rounded-full h-3 overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-pink-400 to-rose-500 rounded-full transition-all duration-300"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
+                  <p className="text-[var(--primary)] font-bold mt-2 text-lg">{uploadProgress}%</p>
+                </div>
+              )}
             </div>
-            <div className="w-full max-w-lg bg-[var(--surface)] border border-[var(--border)] p-4 rounded-xl flex items-center justify-between mb-6">
+            
+            <div className="w-full max-w-lg bg-[var(--surface)] border border-[var(--border)] p-4 rounded-xl flex items-center justify-between mb-2">
               <div>
                 <p className="font-bold text-sm text-[var(--ink)]">Video Preview</p>
                 <p className="text-xs text-[var(--ink-faint)] mt-0.5">Duration: {formatTime(duration)}</p>
@@ -367,8 +432,15 @@ export default function IntroVideoStep({
                 )}
               </div>
             </div>
+            
+            {uploadError && (
+              <div className="mt-2 mb-4 p-3 w-full max-w-lg bg-red-50 text-red-600 text-sm font-semibold rounded-lg border border-red-200 text-center">
+                {uploadError}
+              </div>
+            )}
+            
             <div className="flex gap-4">
-              <Button type="button" onClick={cancelAndReset} variant="secondary">
+              <Button type="button" onClick={cancelAndReset} variant="secondary" disabled={uploading}>
                 <RefreshCcw className="w-4 h-4 mr-2" /> Replace Video
               </Button>
             </div>

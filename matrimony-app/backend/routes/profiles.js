@@ -62,7 +62,9 @@ const uploadDir = path.join(__dirname, '..', 'uploads');
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
 const privateVideoDir = path.join(__dirname, '..', 'private_uploads', 'intro_videos');
+const tempVideoDir = path.join(__dirname, '..', 'private_uploads', 'temp_videos');
 if (!fs.existsSync(privateVideoDir)) fs.mkdirSync(privateVideoDir, { recursive: true });
+if (!fs.existsSync(tempVideoDir)) fs.mkdirSync(tempVideoDir, { recursive: true });
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadDir),
@@ -392,6 +394,43 @@ router.delete('/:id', requireAuth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// POST /api/profiles/upload-chunk
+// Chunked upload for temp video. Bypasses NGINX/WAF limits.
+router.post('/upload-chunk', requireAuth, express.raw({ type: 'application/octet-stream', limit: '10mb' }), async (req, res) => {
+  try {
+    const { uploadId, chunkIndex, totalChunks, fileName } = req.query;
+    if (!uploadId || !chunkIndex || !totalChunks || !fileName) {
+      return res.status(400).json({ error: 'Missing chunk metadata' });
+    }
+
+    const tempFilePath = path.join(tempVideoDir, `${uploadId}_${fileName}`);
+    const chunkData = req.body; // Buffer from express.raw
+
+    // Append chunk to file
+    fs.appendFileSync(tempFilePath, chunkData);
+
+    const cIndex = parseInt(chunkIndex, 10);
+    const tChunks = parseInt(totalChunks, 10);
+
+    if (cIndex === tChunks - 1) {
+      // Final chunk received
+      const ext = path.extname(fileName).toLowerCase();
+      const finalFileName = `intro-${Date.now()}-${Math.round(Math.random() * 1E9)}${ext}`;
+      const finalPath = path.join(privateVideoDir, finalFileName);
+      
+      // Move from temp to private_uploads
+      fs.renameSync(tempFilePath, finalPath);
+      
+      return res.json({ ok: true, temp_video_key: finalFileName });
+    }
+
+    res.json({ ok: true, message: 'Chunk received' });
+  } catch (err) {
+    console.error('Chunk upload error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /api/profiles/:id/intro-video
 router.post('/:id/intro-video', requireAuth, uploadVideoMiddleware, async (req, res) => {
   try {
@@ -400,19 +439,26 @@ router.post('/:id/intro-video', requireAuth, uploadVideoMiddleware, async (req, 
     if (existing.owner_user_id !== req.user.id)
       return res.status(403).json({ error: 'Not authorized to upload video for this profile' });
 
-    if (!req.file) return res.status(400).json({ error: 'No video file provided' });
+    let finalFileName = null;
+    if (req.body.temp_video_key) {
+      finalFileName = req.body.temp_video_key;
+    } else if (req.file) {
+      finalFileName = req.file.filename;
+    } else {
+      return res.status(400).json({ error: 'No video file provided' });
+    }
     
     // Client should send duration in seconds
     const duration = parseInt(req.body.duration_seconds, 10) || 0;
 
     // Delete old video if exists
-    if (existing.intro_video_key) {
+    if (existing.intro_video_key && existing.intro_video_key !== finalFileName) {
       const oldPath = path.join(privateVideoDir, existing.intro_video_key);
       if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
     }
 
     await db.run('UPDATE profiles SET intro_video_key = ?, intro_video_status = ?, intro_video_duration = ? WHERE id = ?',
-      [req.file.filename, 'pending', duration, req.params.id]);
+      [finalFileName, 'pending', duration, req.params.id]);
 
     res.json({ ok: true, message: 'Video uploaded successfully', status: 'pending' });
   } catch (err) { console.error(err); res.status(500).json({ error: err.message }); }

@@ -160,6 +160,7 @@ export default function ProfileWizard() {
   const [existingHoroscope, setExistingHoroscope] = useState(null);
   const [introVideoFile, setIntroVideoFile] = useState(null);
   const [introVideoDuration, setIntroVideoDuration] = useState(0);
+  const [tempVideoKey, setTempVideoKey] = useState(null);
   const [videoUploadProgress, setVideoUploadProgress] = useState(0);
   const [videoUploading, setVideoUploading] = useState(false);
   const [draftStatus, setDraftStatus] = useState('');
@@ -340,32 +341,24 @@ export default function ProfileWizard() {
         toast.success('Profile created — uploading video...');
       }
 
-      if (introVideoFile) {
-        setVideoUploading(true);
-        setVideoUploadProgress(0);
+      if (tempVideoKey) {
+        // Video was already uploaded via chunks, just associate it with the profile
         const videoFd = new FormData();
-        videoFd.append('intro_video', introVideoFile);
+        videoFd.append('temp_video_key', tempVideoKey);
         videoFd.append('duration_seconds', String(introVideoDuration));
         try {
           await api.post(`/profiles/${profileId}/intro-video`, videoFd, {
             headers: { 'Content-Type': 'multipart/form-data' },
-            timeout: 30 * 60 * 1000, // 30 min timeout for large videos
-            onUploadProgress: (e) => {
-              const pct = e.total ? Math.round((e.loaded * 100) / e.total) : 0;
-              setVideoUploadProgress(pct);
-            },
           });
-          toast.success('Introduction video uploaded successfully!');
+          toast.success('Introduction video saved successfully!');
         } catch (videoErr) {
-          console.error('Video upload failed:', videoErr.response?.data || videoErr.message);
-          const vMsg = videoErr.response?.data?.error || 'Video upload failed. Please try again.';
+          console.error('Video link failed:', videoErr.response?.data || videoErr.message);
+          const vMsg = videoErr.response?.data?.error || 'Failed to link video to profile.';
           toast.error(vMsg);
           setServerError(vMsg);
-          setVideoUploading(false);
           setSubmitting(false);
-          return; // don't navigate away if video failed
+          return;
         }
-        setVideoUploading(false);
       }
 
       navigate('/dashboard');
@@ -770,14 +763,16 @@ export default function ProfileWizard() {
                     <>
                       <IntroVideoStep 
                         hasExisting={form.intro_video_status === 'uploaded'}
-                        onVideoSelected={(file, duration) => {
+                        onVideoSelected={(file, duration, tempKey) => {
                           setIntroVideoFile(file);
                           setIntroVideoDuration(duration);
+                          setTempVideoKey(tempKey);
                           setForm(f => ({ ...f, intro_video_status: file ? 'selected' : (f.intro_video_status === 'uploaded' ? 'uploaded' : '') }));
                           if (file) setTouched(t => ({ ...t, intro_video_status: true }));
                         }}
                         onSkip={() => {
                           setIntroVideoFile(null);
+                          setTempVideoKey(null);
                           setForm(f => ({ ...f, intro_video_status: 'skipped' }));
                           setTouched(t => ({ ...t, intro_video_status: true }));
                         }}
