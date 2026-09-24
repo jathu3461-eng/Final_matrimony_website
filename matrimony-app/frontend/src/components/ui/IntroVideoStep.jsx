@@ -136,8 +136,11 @@ export default function IntroVideoStep({
         const end = Math.min(start + CHUNK_SIZE, file.size);
         const chunk = file.slice(start, end);
         
-        const response = await api.post(`/profiles/upload-chunk?uploadId=${uploadId}&chunkIndex=${i}&totalChunks=${totalChunks}&fileName=${encodeURIComponent(fileName)}`, chunk, {
-          headers: { 'Content-Type': 'application/octet-stream' }
+        const fd = new FormData();
+        fd.append('chunk', chunk, fileName);
+        
+        const response = await api.post(`/profiles/upload-chunk?uploadId=${uploadId}&chunkIndex=${i}&totalChunks=${totalChunks}&fileName=${encodeURIComponent(fileName)}`, fd, {
+          headers: { 'Content-Type': 'multipart/form-data' }
         });
         
         setUploadProgress(Math.round(((i + 1) / totalChunks) * 100));

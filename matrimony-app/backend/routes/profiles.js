@@ -395,16 +395,22 @@ router.delete('/:id', requireAuth, async (req, res) => {
 });
 
 // POST /api/profiles/upload-chunk
-// Chunked upload for temp video. Bypasses NGINX/WAF limits.
-router.post('/upload-chunk', requireAuth, express.raw({ type: 'application/octet-stream', limit: '10mb' }), async (req, res) => {
+// Chunked upload for temp video using multipart to bypass WAF limits.
+const uploadChunk = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } }); // 10MB chunk max
+
+router.post('/upload-chunk', requireAuth, uploadChunk.single('chunk'), async (req, res) => {
   try {
     const { uploadId, chunkIndex, totalChunks, fileName } = req.query;
     if (!uploadId || !chunkIndex || !totalChunks || !fileName) {
       return res.status(400).json({ error: 'Missing chunk metadata' });
     }
 
+    if (!req.file) {
+      return res.status(400).json({ error: 'No chunk file provided' });
+    }
+
     const tempFilePath = path.join(tempVideoDir, `${uploadId}_${fileName}`);
-    const chunkData = req.body; // Buffer from express.raw
+    const chunkData = req.file.buffer; // Buffer from multer memoryStorage
 
     // Append chunk to file
     fs.appendFileSync(tempFilePath, chunkData);
