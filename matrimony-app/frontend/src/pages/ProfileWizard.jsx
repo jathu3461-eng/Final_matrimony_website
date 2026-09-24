@@ -770,13 +770,6 @@ export default function ProfileWizard() {
                           setForm(f => ({ ...f, intro_video_status: file ? 'selected' : (f.intro_video_status === 'uploaded' ? 'uploaded' : '') }));
                           if (file) setTouched(t => ({ ...t, intro_video_status: true }));
                         }}
-                        onSkip={() => {
-                          setIntroVideoFile(null);
-                          setTempVideoKey(null);
-                          setForm(f => ({ ...f, intro_video_status: 'skipped' }));
-                          setTouched(t => ({ ...t, intro_video_status: true }));
-                        }}
-                        isSkipped={form.intro_video_status === 'skipped'}
                         error={touched.intro_video_status && stepErrors.intro_video_status}
                       />
                       <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] p-4 flex items-start gap-3 mt-4">

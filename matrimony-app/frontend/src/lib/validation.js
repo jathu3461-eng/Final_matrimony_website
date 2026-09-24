@@ -243,14 +243,14 @@ export const profileSteps = [
   {
     key: 'video',
     title: 'Introduction Video',
-    hint: 'Upload a 1–3 min private intro video',
+    hint: 'Upload a 1–2 min private intro video',
     icon: 'Camera',
     fields: ['intro_video_status'],
     schema: z.object({
-      // 'selected' = user picked a file; 'uploaded' = already on server; 'skipped' = user acknowledged but skipped
+      // 'selected' = user picked a file; 'uploaded' = already on server
       intro_video_status: z.string().refine(
-        (v) => ['selected', 'uploaded', 'skipped'].includes(v),
-        { message: 'Please select or upload an introduction video, or choose to skip' }
+        (v) => ['selected', 'uploaded'].includes(v),
+        { message: 'Please select or upload an introduction video (Mandatory)' }
       ),
     }),
   },

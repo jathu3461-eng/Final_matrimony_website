@@ -398,7 +398,17 @@ router.delete('/:id', requireAuth, async (req, res) => {
 // Chunked upload for temp video using multipart to bypass WAF limits.
 const uploadChunk = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } }); // 10MB chunk max
 
-router.post('/upload-chunk', requireAuth, uploadChunk.single('chunk'), async (req, res) => {
+const uploadChunkMiddleware = (req, res, next) => {
+  uploadChunk.single('chunk')(req, res, (err) => {
+    if (err) {
+      console.error('Multer chunk error:', err);
+      return res.status(400).json({ error: `Upload error: ${err.message}` });
+    }
+    next();
+  });
+};
+
+router.post('/upload-chunk', requireAuth, uploadChunkMiddleware, async (req, res) => {
   try {
     const { uploadId, chunkIndex, totalChunks, fileName } = req.query;
     if (!uploadId || !chunkIndex || !totalChunks || !fileName) {

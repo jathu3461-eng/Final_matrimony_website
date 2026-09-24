@@ -139,9 +139,7 @@ export default function IntroVideoStep({
         const fd = new FormData();
         fd.append('chunk', chunk, fileName);
         
-        const response = await api.post(`/profiles/upload-chunk?uploadId=${uploadId}&chunkIndex=${i}&totalChunks=${totalChunks}&fileName=${encodeURIComponent(fileName)}`, fd, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        });
+        const response = await api.post(`/profiles/upload-chunk?uploadId=${uploadId}&chunkIndex=${i}&totalChunks=${totalChunks}&fileName=${encodeURIComponent(fileName)}`, fd);
         
         setUploadProgress(Math.round(((i + 1) / totalChunks) * 100));
         
@@ -183,7 +181,7 @@ export default function IntroVideoStep({
       URL.revokeObjectURL(url);
       const vidDuration = Math.round(tempVideo.duration);
       if (vidDuration < 60) { alert('Your introduction video must be at least 1 minute long.'); return; }
-      if (vidDuration > 180) { alert('Your introduction video must not exceed 3 minutes.'); return; }
+      if (vidDuration > 120) { alert('Your introduction video must not exceed 2 minutes.'); return; }
       setPreviewUrl(URL.createObjectURL(file));
       setDuration(vidDuration);
       setMode('preview');
@@ -253,7 +251,7 @@ export default function IntroVideoStep({
           <div>
             <h3 className="text-lg font-bold text-[var(--ink)]">Introduction Video</h3>
             <p className="text-sm text-[var(--ink-soft)] mt-1">
-              Please upload a short introduction video between <strong>1 and 3 minutes</strong>.
+              Please upload a short introduction video between <strong>1 and 2 minutes</strong>.
             </p>
           </div>
         </div>
@@ -351,20 +349,6 @@ export default function IntroVideoStep({
                 <span className="font-bold text-[var(--ink)]">Record a Video</span>
                 <span className="text-[11px] text-[var(--ink-faint)] mt-1">Use your webcam</span>
               </button>
-            </div>
-
-            {/* Skip option */}
-            {onSkip && !hasExisting && (
-              <div className="mt-2 text-center">
-                <button
-                  type="button"
-                  onClick={onSkip}
-                  className="text-xs text-[var(--ink-faint)] hover:text-[var(--ink-soft)] underline underline-offset-2 transition-colors"
-                >
-                  Skip for now (you can add it later from Edit Profile)
-                </button>
-              </div>
-            )}
           </div>
         )}
 
@@ -376,7 +360,7 @@ export default function IntroVideoStep({
               {recording && (
                 <div className="absolute top-4 right-4 bg-red-500 text-white text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-2 animate-pulse">
                   <div className="w-2 h-2 bg-white rounded-full"></div>
-                  {formatTime(duration)} / 03:00
+                  {formatTime(duration)} / 02:00
                 </div>
               )}
             </div>
@@ -425,7 +409,7 @@ export default function IntroVideoStep({
                 <p className="text-xs text-[var(--ink-faint)] mt-0.5">Duration: {formatTime(duration)}</p>
               </div>
               <div className="flex items-center gap-1.5">
-                {duration >= 60 && duration <= 180 ? (
+                {duration >= 60 && duration <= 120 ? (
                   <span className="text-xs font-bold text-[var(--success)] flex items-center gap-1 bg-[var(--success-soft)] px-2 py-1 rounded-md">
                     <Check className="w-3.5 h-3.5" /> Valid
                   </span>
