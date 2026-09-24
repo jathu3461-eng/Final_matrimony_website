@@ -103,7 +103,7 @@ jobs:
             git clone --depth 1 https://github.com/jathu3461-eng/Final_matrimony_website.git _deploy_tmp
 
             # Copy backend files to app root (preserving uploads/ and data/ if they exist)
-            rsync -av --exclude='node_modules' --exclude='.git' --exclude='uploads' --exclude='data' _deploy_tmp/backend/ ./
+            rsync -av --exclude='node_modules' --exclude='.git' --exclude='uploads' --exclude='data' _deploy_tmp/matrimony-app/backend/ ./
             rm -rf _deploy_tmp
 
             # Install production dependencies
