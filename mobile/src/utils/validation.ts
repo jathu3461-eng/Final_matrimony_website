@@ -231,7 +231,7 @@ export const profileSteps: ProfileStepDef[] = [
   { key: 'astrology', title: 'Astrology', hint: 'Raasi and nakshatram', icon: 'star', fields: ['raasi_id', 'star_id'] },
   { key: 'location', title: 'Location', hint: 'Where you were born and live now', icon: 'location', fields: ['born_country_id', 'current_country_id', 'city_or_state'] },
   { key: 'media', title: 'Photos & Privacy', hint: 'Upload media and set privacy', icon: 'camera', fields: ['blur_photo', 'blur_horoscope'] },
-  { key: 'video', title: 'Introduction Video', hint: 'Upload a 1–3 min private intro video', icon: 'videocam', fields: ['intro_video_status'] },
+  { key: 'video', title: 'Introduction Video', hint: 'Upload a 1–2 min private intro video', icon: 'videocam', fields: ['intro_video_status'] },
   { key: 'bio', title: 'Bio & Review', hint: 'Tell your story', icon: 'document-text', fields: ['about_me'] },
 ];
 

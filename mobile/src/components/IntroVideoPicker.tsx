@@ -29,7 +29,7 @@ export function IntroVideoPicker({ hasExisting, error, onVideoSelected }: IntroV
         mediaTypes: ['videos'],
         allowsEditing: true,
         quality: 1,
-        videoMaxDuration: 180, // 3 minutes limit for camera recording
+        videoMaxDuration: 120, // 2 minutes limit for camera recording
       };
 
       const res = useCamera 
@@ -49,8 +49,8 @@ export function IntroVideoPicker({ hasExisting, error, onVideoSelected }: IntroV
             Alert.alert('Invalid Duration', 'Your introduction video must be at least 1 minute long.');
             return;
           }
-          if (durationSecs > 180) {
-            Alert.alert('Invalid Duration', 'Your introduction video must not exceed 3 minutes.');
+          if (durationSecs > 120) {
+            Alert.alert('Invalid Duration', 'Your introduction video must not exceed 2 minutes.');
             return;
           }
         }
@@ -73,7 +73,7 @@ export function IntroVideoPicker({ hasExisting, error, onVideoSelected }: IntroV
         <View style={styles.headerText}>
           <Text style={[styles.title, { color: colors.ink }]}>Introduction Video</Text>
           <Text style={[styles.subtitle, { color: colors.inkSoft }]}>
-            Please upload a short introduction video between 1 and 3 minutes.
+            Please upload a short introduction video between 1 and 2 minutes.
           </Text>
         </View>
       </View>
@@ -136,8 +136,8 @@ export function IntroVideoPicker({ hasExisting, error, onVideoSelected }: IntroV
                   onVideoSelected(videoUri, s);
                   if (s < 60) {
                     Alert.alert('Invalid Duration', 'Your video is less than 1 minute long. Please re-record or choose another video.');
-                  } else if (s > 180) {
-                    Alert.alert('Invalid Duration', 'Your video is longer than 3 minutes. Please re-record or choose another video.');
+                  } else if (s > 120) {
+                    Alert.alert('Invalid Duration', 'Your video is longer than 2 minutes. Please re-record or choose another video.');
                   }
                 }
               }}
@@ -150,7 +150,7 @@ export function IntroVideoPicker({ hasExisting, error, onVideoSelected }: IntroV
               <Text style={[styles.previewDuration, { color: colors.inkFaint }]}>Duration: {formatTime(duration)}</Text>
             </View>
             <View>
-              {duration >= 60 && duration <= 180 ? (
+              {duration >= 60 && duration <= 120 ? (
                 <View style={[styles.badge, { backgroundColor: colors.successSoft }]}>
                   <Ionicons name="checkmark" size={14} color={colors.success} />
                   <Text style={[styles.badgeText, { color: colors.success }]}>Valid</Text>
