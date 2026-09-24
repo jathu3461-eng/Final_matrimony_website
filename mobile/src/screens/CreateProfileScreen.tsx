@@ -192,16 +192,11 @@ export function CreateProfileScreen() {
       
       // Upload video if selected
       if (introVideoUri) {
-        const videoFormData = new FormData();
         const ext = introVideoUri.split('.').pop() || 'mp4';
-        videoFormData.append('intro_video', {
-          uri: introVideoUri,
-          name: `intro-video.${ext}`,
-          type: `video/${ext}`,
-        } as unknown as Blob);
-        videoFormData.append('duration_seconds', String(introVideoDuration));
-        
-        await profileApi.uploadIntroVideo(res.profile.id, videoFormData);
+        const filename = `intro-video.${ext}`;
+        await profileApi.uploadIntroVideoChunkedBase64(res.profile.id, introVideoUri, filename, introVideoDuration, (progress) => {
+          // Progress can be handled here if needed in UI
+        });
       }
 
       Alert.alert('Profile created', 'Your profile is now live.', [

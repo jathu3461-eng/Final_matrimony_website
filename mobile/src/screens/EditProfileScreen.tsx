@@ -182,15 +182,9 @@ export function EditProfileScreen() {
       await profileApi.update(p.id, formData);
 
       if (introVideoUri) {
-        const videoFormData = new FormData();
         const ext = introVideoUri.split('.').pop() || 'mp4';
-        videoFormData.append('intro_video', {
-          uri: introVideoUri,
-          name: `intro-video.${ext}`,
-          type: `video/${ext}`,
-        } as unknown as Blob);
-        videoFormData.append('duration_seconds', String(introVideoDuration));
-        await profileApi.uploadIntroVideo(p.id, videoFormData);
+        const filename = `intro-video.${ext}`;
+        await profileApi.uploadIntroVideoChunkedBase64(p.id, introVideoUri, filename, introVideoDuration);
       }
 
       queryClient.invalidateQueries({ queryKey: ['profile', profileId] });

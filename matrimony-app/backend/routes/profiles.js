@@ -449,6 +449,36 @@ router.post('/upload-chunk', requireAuth, uploadChunkMiddleware, async (req, res
   }
 });
 
+// POST /api/profiles/upload-chunk-base64
+// For mobile app which cannot easily send multipart sliced blobs
+router.post('/upload-chunk-base64', requireAuth, express.json({ limit: '5mb' }), async (req, res) => {
+  try {
+    const { uploadId, chunkIndex, totalChunks, fileName, chunkBase64 } = req.body;
+    if (!uploadId || chunkIndex === undefined || !totalChunks || !fileName || !chunkBase64) {
+      return res.status(400).json({ error: 'Missing chunk parameters' });
+    }
+
+    const tempFilePath = path.join(privateVideoDir, `temp-${uploadId}.mp4`);
+    const buffer = Buffer.from(chunkBase64, 'base64');
+    fs.appendFileSync(tempFilePath, buffer);
+
+    const cIndex = parseInt(chunkIndex, 10);
+    const tChunks = parseInt(totalChunks, 10);
+
+    if (cIndex === tChunks - 1) {
+      const ext = path.extname(fileName).toLowerCase();
+      const finalFileName = `intro-${Date.now()}-${Math.round(Math.random() * 1E9)}${ext}`;
+      const finalPath = path.join(privateVideoDir, finalFileName);
+      fs.renameSync(tempFilePath, finalPath);
+      return res.json({ ok: true, temp_video_key: finalFileName });
+    }
+    res.json({ ok: true, message: 'Chunk received' });
+  } catch (err) {
+    console.error('Base64 chunk upload error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /api/profiles/:id/intro-video
 router.post('/:id/intro-video', requireAuth, uploadVideoMiddleware, async (req, res) => {
   try {
