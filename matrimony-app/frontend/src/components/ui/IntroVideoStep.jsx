@@ -124,7 +124,7 @@ export default function IntroVideoStep({
     setTempKey(null);
     
     try {
-      const CHUNK_SIZE = 2 * 1024 * 1024; // 2MB
+      const CHUNK_SIZE = 512 * 1024; // 512 KB (small enough to bypass strict cPanel limits)
       const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
       const uploadId = Date.now().toString();
       const fileName = file.name || 'video.mp4';
@@ -154,7 +154,8 @@ export default function IntroVideoStep({
     } catch (err) {
       console.error(err);
       const backendError = err.response?.data?.error;
-      setUploadError(backendError ? `Upload Error: ${backendError}` : 'Failed to upload video securely. Please check your connection and try again.');
+      const genericMsg = err.message === 'Network Error' ? 'Network Error: The file chunk might be too large or blocked by server security.' : `Failed: ${err.message}`;
+      setUploadError(backendError ? `Upload Error: ${backendError}` : genericMsg);
       setUploading(false);
       onVideoSelected(null, 0, null);
     }
