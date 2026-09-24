@@ -409,6 +409,8 @@ router.post('/upload-chunk', requireAuth, uploadChunk.single('chunk'), async (re
       return res.status(400).json({ error: 'No chunk file provided' });
     }
 
+    if (!fs.existsSync(tempVideoDir)) fs.mkdirSync(tempVideoDir, { recursive: true });
+
     const tempFilePath = path.join(tempVideoDir, `${uploadId}_${fileName}`);
     const chunkData = req.file.buffer; // Buffer from multer memoryStorage
 

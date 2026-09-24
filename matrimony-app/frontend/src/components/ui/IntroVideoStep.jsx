@@ -155,7 +155,8 @@ export default function IntroVideoStep({
       onVideoSelected(null, durationVal, finalKey);
     } catch (err) {
       console.error(err);
-      setUploadError('Failed to upload video securely. Please check your connection and try again.');
+      const backendError = err.response?.data?.error;
+      setUploadError(backendError ? `Upload Error: ${backendError}` : 'Failed to upload video securely. Please check your connection and try again.');
       setUploading(false);
       onVideoSelected(null, 0, null);
     }
