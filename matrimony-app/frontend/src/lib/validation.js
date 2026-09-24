@@ -231,6 +231,16 @@ export const profileSteps = [
     }),
   },
   {
+    key: 'bio',
+    title: 'Bio & Review',
+    hint: 'Tell your story',
+    icon: 'FileText',
+    fields: ['about_me'],
+    schema: z.object({
+      about_me: aboutMe,
+    }),
+  },
+  {
     key: 'video',
     title: 'Introduction Video',
     hint: 'Upload a 1–3 min private intro video',
@@ -242,16 +252,6 @@ export const profileSteps = [
         (v) => ['selected', 'uploaded', 'skipped'].includes(v),
         { message: 'Please select or upload an introduction video, or choose to skip' }
       ),
-    }),
-  },
-  {
-    key: 'bio',
-    title: 'Bio & Review',
-    hint: 'Tell your story',
-    icon: 'FileText',
-    fields: ['about_me'],
-    schema: z.object({
-      about_me: aboutMe,
     }),
   },
 ];

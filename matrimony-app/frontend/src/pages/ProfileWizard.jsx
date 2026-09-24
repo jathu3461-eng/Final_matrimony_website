@@ -750,6 +750,24 @@ export default function ProfileWizard() {
 
                   {step === 9 && (
                     <>
+                      <TextareaField
+                        label="About Me"
+                        placeholder="Hello, looking for an understanding partner who values family traditions…"
+                        value={form.about_me}
+                        onChange={set('about_me')}
+                        onBlur={blur('about_me')}
+                        name="about_me"
+                        rows={6}
+                        counter={2000}
+                        error={touched.about_me && stepErrors.about_me}
+                        help="Minimum 50 characters — tell your story, interests and what you value in a partner"
+                        required
+                      />
+                    </>
+                  )}
+
+                  {step === 10 && (
+                    <>
                       <IntroVideoStep 
                         hasExisting={form.intro_video_status === 'uploaded'}
                         onVideoSelected={(file, duration) => {
@@ -766,25 +784,7 @@ export default function ProfileWizard() {
                         isSkipped={form.intro_video_status === 'skipped'}
                         error={touched.intro_video_status && stepErrors.intro_video_status}
                       />
-                    </>
-                  )}
-
-                  {step === 10 && (
-                    <>
-                      <TextareaField
-                        label="About Me"
-                        placeholder="Hello, looking for an understanding partner who values family traditions…"
-                        value={form.about_me}
-                        onChange={set('about_me')}
-                        onBlur={blur('about_me')}
-                        name="about_me"
-                        rows={6}
-                        counter={2000}
-                        error={touched.about_me && stepErrors.about_me}
-                        help="Minimum 50 characters — tell your story, interests and what you value in a partner"
-                        required
-                      />
-                      <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] p-4 flex items-start gap-3">
+                      <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] p-4 flex items-start gap-3 mt-4">
                         <Check className="w-5 h-5 text-[var(--success)] shrink-0 mt-0.5" aria-hidden="true" />
                         <p className="text-[13px] text-[var(--ink-soft)] leading-relaxed">
                           Your profile is <strong className="text-[var(--ink)]">{completion}% complete</strong>. Review the
