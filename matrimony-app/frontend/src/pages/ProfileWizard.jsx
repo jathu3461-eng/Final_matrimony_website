@@ -767,8 +767,8 @@ export default function ProfileWizard() {
                           setIntroVideoFile(file);
                           setIntroVideoDuration(duration);
                           setTempVideoKey(tempKey);
-                          setForm(f => ({ ...f, intro_video_status: file ? 'selected' : (f.intro_video_status === 'uploaded' ? 'uploaded' : '') }));
-                          if (file) setTouched(t => ({ ...t, intro_video_status: true }));
+                          setForm(f => ({ ...f, intro_video_status: (file || tempKey) ? 'selected' : (f.intro_video_status === 'uploaded' ? 'uploaded' : '') }));
+                          if (file || tempKey) setTouched(t => ({ ...t, intro_video_status: true }));
                         }}
                         error={touched.intro_video_status && stepErrors.intro_video_status}
                       />
