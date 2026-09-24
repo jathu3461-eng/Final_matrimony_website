@@ -349,6 +349,7 @@ export default function IntroVideoStep({
                 <span className="font-bold text-[var(--ink)]">Record a Video</span>
                 <span className="text-[11px] text-[var(--ink-faint)] mt-1">Use your webcam</span>
               </button>
+            </div>
           </div>
         )}
 
