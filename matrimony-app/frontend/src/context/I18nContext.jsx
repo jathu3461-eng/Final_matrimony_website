@@ -1,21 +1,26 @@
-import { createContext, useContext, useState, useCallback, useMemo } from 'react';
-import en from '../i18n/en.json';
-import ta from '../i18n/ta.json';
+import { createContext, useContext, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 
-const dictionaries = { en, ta };
 const I18nContext = createContext(null);
 
 export function I18nProvider({ children }) {
-  const [lang, setLang] = useState(localStorage.getItem('ui_lang') || 'en');
+  const { t, i18n } = useTranslation();
 
-  const changeLang = useCallback((l) => {
-    setLang(l);
+  const lang = i18n.language;
+
+  const setLang = (l) => {
+    i18n.changeLanguage(l);
     localStorage.setItem('ui_lang', l);
-  }, []);
+  };
 
-  const t = useCallback((key) => dictionaries[lang]?.[key] ?? dictionaries.en[key] ?? key, [lang]);
+  useEffect(() => {
+    const stored = localStorage.getItem('ui_lang');
+    if (stored && stored !== i18n.language) {
+      i18n.changeLanguage(stored);
+    }
+  }, [i18n]);
 
-  const value = useMemo(() => ({ lang, setLang: changeLang, t }), [lang, changeLang, t]);
+  const value = useMemo(() => ({ lang, setLang, t }), [lang, t]);
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
 }

@@ -8,6 +8,7 @@ import { I18nProvider } from './context/I18nContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import { ToastProvider } from './components/ui';
 import './index.css';
+import './i18n';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
