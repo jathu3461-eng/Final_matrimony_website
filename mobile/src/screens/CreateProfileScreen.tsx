@@ -23,6 +23,7 @@ import { StepIndicator } from '@/components/StepIndicator';
 import { IntroVideoPicker } from '@/components/IntroVideoPicker';
 import { profileApi } from '@/api/profiles';
 import { extractError } from '@/api/client';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/theme';
 import { radius, spacing, typography, layout } from '@/theme';
 import HeightSelector from '@/components/HeightSelector';
@@ -45,6 +46,7 @@ import type { RootStackParamList } from '@/navigation/types';
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 export function CreateProfileScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<Nav>();
   const { colors } = useTheme();
   const [loading, setLoading] = useState(false);
@@ -217,27 +219,27 @@ export function CreateProfileScreen() {
         return (
           <>
             <SelectField
-              label="Profile Posted By"
-              options={POSTED_BY.map((p) => ({ value: p, label: p }))}
+              label={t('profile_posted_by', 'Profile Posted By')}
+              options={POSTED_BY.map((p) => ({ value: p, label: t(`posted_by_${p.toLowerCase().replace(/[^a-z]/g, '_')}`, p) }))}
               value={form.profile_registered_for}
               onChange={set('profile_registered_for')}
               error={touched.profile_registered_for ? stepErrors.profile_registered_for : null}
               required
             />
             <FormField
-              label="Full Name"
+              label={t('full_name', 'Full Name')}
               value={form.name}
               onChangeText={set('name')}
               onBlur={blur('name')}
-              placeholder="Priya Sutharsan"
+              placeholder={t('name_placeholder', 'Priya Sutharsan')}
               maxLength={60}
               count
               error={touched.name ? stepErrors.name : null}
-              hint={touched.name ? undefined : 'Min 2 characters, letters and spaces only'}
+              hint={touched.name ? undefined : t('name_hint', 'Min 2 characters, letters and spaces only')}
             />
 
             <Text style={[styles.fieldLabel, { color: colors.inkSoft }]}>
-              Gender<Text style={{ color: colors.error }}> *</Text>
+              {t('gender', 'Gender')}<Text style={{ color: colors.error }}> *</Text>
             </Text>
             <View style={styles.genderRow}>
               <Pressable
@@ -261,7 +263,7 @@ export function CreateProfileScreen() {
                     { color: form.gender === 'M' ? colors.white : colors.inkSoft },
                   ]}
                 >
-                  Male
+                  {t('gender_male', 'Male')}
                 </Text>
               </Pressable>
               <Pressable
@@ -285,7 +287,7 @@ export function CreateProfileScreen() {
                     { color: form.gender === 'F' ? colors.white : colors.inkSoft },
                   ]}
                 >
-                  Female
+                  {t('gender_female', 'Female')}
                 </Text>
               </Pressable>
             </View>

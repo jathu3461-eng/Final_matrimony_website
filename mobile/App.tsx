@@ -1,4 +1,5 @@
 import 'react-native-gesture-handler';
+import './src/i18n';
 import React, { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';

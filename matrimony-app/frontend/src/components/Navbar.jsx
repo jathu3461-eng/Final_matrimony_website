@@ -124,7 +124,7 @@ export default function Navbar({ siteName }) {
                   ? 'bg-white text-pink-600 font-extrabold shadow-sm'
                   : 'text-slate-600 hover:text-pink-600 hover:bg-white/70'}`}
             >
-              💬 Messages
+              💬 {t('nav_messages', 'Messages')}
               {unreadTotal > 0 && (
                 <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-white text-[10px] font-extrabold flex items-center justify-center leading-none">
                   {unreadTotal > 99 ? '99+' : unreadTotal}

@@ -11,13 +11,7 @@ import { useI18n } from '../context/I18nContext';
 import ProfileCard from '../components/ProfileCard';
 import { Button, Badge, Skeleton, ErrorCard, useToast } from '../components/ui';
 
-const TABS = [
-  { id: 'profiles', icon: Users, label: 'My Profiles' },
-  { id: 'interests', icon: Heart, label: 'Interests' },
-  { id: 'shortlists', icon: Star, label: 'Shortlist' },
-  { id: 'messages', icon: MessagesSquare, label: 'Messages' },
-  { id: 'brokers', icon: Building2, label: 'Brokers' },
-];
+// TABS will be defined inside the component to use the t() hook
 
 function ProfileGridSkeleton() {
   return (
@@ -42,6 +36,14 @@ export default function Dashboard() {
   const { t } = useI18n();
   const navigate = useNavigate();
   const toast = useToast();
+
+  const TABS = [
+    { id: 'profiles', icon: Users, label: t('tab_my_profiles', 'My Profiles') },
+    { id: 'interests', icon: Heart, label: t('tab_interests', 'Interests') },
+    { id: 'shortlists', icon: Star, label: t('tab_shortlist', 'Shortlist') },
+    { id: 'messages', icon: MessagesSquare, label: t('tab_messages', 'Messages') },
+    { id: 'brokers', icon: Building2, label: t('tab_brokers', 'Brokers') },
+  ];
 
   useEffect(() => {
     if (user && user.role === 'broker') navigate('/broker/dashboard', { replace: true });
@@ -165,16 +167,16 @@ export default function Dashboard() {
             <div className="flex items-center gap-2 mb-2">
               <span className="text-3xl">{isBroker ? '💼' : '💖'}</span>
               <span className="bg-white/20 text-white text-xs font-bold px-3 py-1 rounded-full">
-                {isBroker ? 'Broker Dashboard' : 'My Dashboard'}
+                {isBroker ? t('broker_dashboard', 'Broker Dashboard') : t('my_dashboard', 'My Dashboard')}
               </span>
             </div>
             <h1 className="text-3xl font-extrabold tracking-tight">
-              Welcome back, <span className="text-pink-100">{user?.username}</span>!
+              {t('welcome_back', 'Welcome back')}, <span className="text-pink-100">{user?.username}</span>!
             </h1>
             <p className="text-white/80 text-sm mt-1">
               {isBroker
-                ? `Managing ${profiles.length} / ${user?.broker_profile_limit || '∞'} client profiles`
-                : 'Continue your journey to find your perfect life partner'}
+                ? `${t('managing', 'Managing')} ${profiles.length} / ${user?.broker_profile_limit || '∞'} ${t('client_profiles', 'client profiles')}`
+                : t('continue_journey', 'Continue your journey to find your perfect life partner')}
             </p>
           </div>
 
