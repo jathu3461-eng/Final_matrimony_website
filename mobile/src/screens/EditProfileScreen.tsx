@@ -65,6 +65,8 @@ export function EditProfileScreen() {
   const [introVideoDuration, setIntroVideoDuration] = useState<number>(0);
   const [saving, setSaving] = useState(false);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [videoUploading, setVideoUploading] = useState(false);
+  const [videoUploadProgress, setVideoUploadProgress] = useState(0);
 
   const p = profile.data;
   const metaData = meta.data as ProfileMeta | undefined;
@@ -184,7 +186,16 @@ export function EditProfileScreen() {
       if (introVideoUri) {
         const ext = introVideoUri.split('.').pop() || 'mp4';
         const filename = `intro-video.${ext}`;
-        await profileApi.uploadIntroVideoChunkedBase64(p.id, introVideoUri, filename, introVideoDuration);
+        setVideoUploading(true);
+        setVideoUploadProgress(0);
+        try {
+          await profileApi.uploadIntroVideoChunkedBase64(p.id, introVideoUri, filename, introVideoDuration, (progress) => {
+            setVideoUploadProgress(progress);
+          });
+        } finally {
+          setVideoUploading(false);
+          setVideoUploadProgress(0);
+        }
       }
 
       queryClient.invalidateQueries({ queryKey: ['profile', profileId] });
@@ -448,18 +459,6 @@ export function EditProfileScreen() {
             maxLength={100}
           />
 
-          {/* Video */}
-          <SectionHeader icon="videocam" title="Introduction Video" colors={colors} />
-          <IntroVideoPicker
-            hasExisting={form.intro_video_status === 'uploaded'}
-            error={null}
-            onVideoSelected={(uri, duration) => {
-              setIntroVideoUri(uri);
-              setIntroVideoDuration(duration);
-              setForm((f) => ({ ...f, intro_video_status: uri ? 'selected' : (f.intro_video_status === 'uploaded' ? 'uploaded' : '') }));
-            }}
-          />
-
           {/* About */}
           <SectionHeader icon="document-text" title="About Me" colors={colors} />
           <FormField
@@ -471,6 +470,18 @@ export function EditProfileScreen() {
             maxLength={2000}
             style={{ minHeight: 120, textAlignVertical: 'top' }}
           />
+
+          {/* Video */}
+          <SectionHeader icon="videocam" title="Introduction Video" colors={colors} />
+          <IntroVideoPicker
+            hasExisting={form.intro_video_status === 'uploaded'}
+            error={null}
+            onVideoSelected={(uri, duration) => {
+              setIntroVideoUri(uri);
+              setIntroVideoDuration(duration);
+              setForm((f) => ({ ...f, intro_video_status: uri ? 'selected' : (f.intro_video_status === 'uploaded' ? 'uploaded' : '') }));
+            }}
+          />
         </ScrollView>
 
         {/* Save button */}
@@ -480,11 +491,33 @@ export function EditProfileScreen() {
             variant="primary"
             size="md"
             onPress={save}
-            loading={saving}
+            loading={saving || videoUploading}
             leftIcon="checkmark-circle"
           />
         </View>
       </KeyboardAvoidingView>
+
+      {/* Video Upload Progress Overlay */}
+      {videoUploading && (
+        <View style={styles.uploadOverlay}>
+          <View style={[styles.uploadModal, { backgroundColor: colors.white }]}>
+            <View style={[styles.uploadIconWrap, { backgroundColor: colors.primarySoft }]}>
+              <Ionicons name="videocam" size={28} color={colors.primary} />
+            </View>
+            <Text style={[styles.uploadTitle, { color: colors.ink }]}>Uploading Video…</Text>
+            <Text style={[styles.uploadSubtitle, { color: colors.inkFaint }]}>Please wait, do not close this page</Text>
+            <View style={[styles.progressBarBg, { backgroundColor: colors.border }]}>
+              <View
+                style={[
+                  styles.progressBarFill,
+                  { backgroundColor: colors.primary, width: `${videoUploadProgress}%` as any },
+                ]}
+              />
+            </View>
+            <Text style={[styles.progressText, { color: colors.primary }]}>{videoUploadProgress}%</Text>
+          </View>
+        </View>
+      )}
     </Screen>
   );
 }
@@ -608,5 +641,58 @@ const styles = StyleSheet.create({
     paddingHorizontal: layout.screenHorizontalPadding,
     paddingVertical: spacing.lg,
     borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  uploadOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 999,
+  },
+  uploadModal: {
+    width: '80%',
+    borderRadius: 20,
+    padding: 28,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 10,
+    gap: 12,
+  },
+  uploadIconWrap: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  uploadTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  uploadSubtitle: {
+    fontSize: 12,
+    textAlign: 'center',
+  },
+  progressBarBg: {
+    width: '100%',
+    height: 10,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    borderRadius: 8,
+  },
+  progressText: {
+    fontSize: 22,
+    fontWeight: '800',
   },
 });
