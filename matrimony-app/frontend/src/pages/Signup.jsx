@@ -202,14 +202,14 @@ export default function Signup() {
         
         <div className="max-w-md w-full space-y-8">
           <div className="flex justify-center">
-            <div className="w-12 h-12 bg-[#E31C5F] rounded-lg"></div> {/* Placeholder logo */}
+            <svg viewBox="0 0 1000 1000" className="w-12 h-12 text-[#E31C5F] fill-current" aria-hidden="true" role="presentation" focusable="false"><path d="M499.3 736.7c-51-64-81-120.1-91-168.1-10-39-6-70 11-93 18-27 45-40 80-40s62 13 80 40c17 23 21 54 11 93-11 49-41 105-91 168.1zm362.2 43c-7 47-39 86-83 105-85 37-169.1-22-241.1-102 119.1-149.1 141.1-265.1 90-340.2-30-43-73-64-128.1-64-55 0-98 21-128.1 64-51 75.1-29 191.1 90 340.2-72 80-156.1 139-241.1 102-44-19-76-58-83-105-9-61 110-252.1 350.2-538.1 23-28 59-42 97-42s74 14 97 42c240.1 286.1 359.2 477.1 350.2 538.1zm-288.1-434.2c-21-25-46-34-74-34s-53 9-74 34c-47 54-72 114.1-72 174.1s25 120.1 72 174.1c21 25 46 34 74 34s53-9 74-34c47-54 72-114.1 72-174.1s-25-120.1-72-174.1zm-404.2 344.2c-56 36-111 65-163.1 83-44 15-88.1 16-128.1-1-66-28-111-89-122-162-13-88 111-285.1 346.2-566.2 31-38 80-57 131.1-57s100 19 131.1 57c235.1 281.1 359.2 478.1 346.2 566.2-11 73-56 134-122 162-40 17-84.1 16-128.1 1-52-18-107-47-163.1-83 75.1 95 167.1 156.1 253.1 119 56-24 95-75 104-138 10-64-114.1-255.1-348.2-534.2-18-22-44-32-72-32s-54 10-72 32c-234.1 279.1-358.2 470.1-348.2 534.2 9 63 48 114.1 104 138 86 37 178.1-24 253.1-119z"></path></svg>
           </div>
           
           <h1 className="text-3xl font-bold text-center text-gray-900 tracking-tight">Everyone belongs here</h1>
           
           <div className="space-y-6">
             <p className="text-lg text-gray-600">
-              When you join our community, we ask you to agree to our <span className="font-semibold text-gray-900 underline underline-offset-2">Community Commitment</span>:
+              When you join Airbnb, we ask you to agree to our <span className="font-semibold text-gray-900 underline underline-offset-2">Community Commitment</span>:
             </p>
             <p className="text-lg text-gray-600">
               I will treat everyone in the community—regardless of their race, religion, national origin, ethnicity, skin colour, disability, sex, gender identity, sexual orientation, or age—with respect, and without judgment or bias.

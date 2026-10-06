@@ -5,6 +5,7 @@ import {
   StyleSheet,
   Text,
   View,
+  Image,
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { useNavigation } from '@react-navigation/native';
@@ -372,13 +373,16 @@ export function RegisterScreen() {
           
           <View style={styles.agreementContent}>
             <View style={{ alignItems: 'center', marginBottom: spacing.xl }}>
-              <AnimatedLogo shape="hexagon" size={48} />
+              <Image 
+                source={{ uri: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/Airbnb_Logo_B%C3%A9lo.svg/512px-Airbnb_Logo_B%C3%A9lo.svg.png' }} 
+                style={{ width: 48, height: 48, resizeMode: 'contain' }} 
+              />
             </View>
             
             <Text style={[styles.agreementTitle, { color: colors.ink }]}>Everyone belongs here</Text>
             
             <Text style={[styles.agreementText, { color: colors.inkSoft, marginBottom: spacing.lg }]}>
-              When you join our community, we ask you to agree to our <Text style={{ fontWeight: '700', textDecorationLine: 'underline', color: colors.ink }}>Community Commitment</Text>:
+              When you join Airbnb, we ask you to agree to our <Text style={{ fontWeight: '700', textDecorationLine: 'underline', color: colors.ink }}>Community Commitment</Text>:
             </Text>
             
             <Text style={[styles.agreementText, { color: colors.inkSoft }]}>
