@@ -363,50 +363,52 @@ export function RegisterScreen() {
           </View>
       </KeyboardAwareScrollView>
 
-      <Modal visible={showAgreement} animationType="slide" transparent={false}>
-        <Screen edges={['top', 'bottom']} style={styles.agreementScreen}>
-          <View style={styles.agreementHeader}>
-            <Pressable onPress={() => setShowAgreement(false)} hitSlop={12} style={styles.backBtn}>
-              <Ionicons name="arrow-back" size={24} color={colors.ink} />
-            </Pressable>
-          </View>
-          
-          <View style={styles.agreementContent}>
-            <View style={{ alignItems: 'center', marginBottom: spacing.xl }}>
-              <Image 
-                source={{ uri: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/Airbnb_Logo_B%C3%A9lo.svg/512px-Airbnb_Logo_B%C3%A9lo.svg.png' }} 
-                style={{ width: 48, height: 48, resizeMode: 'contain' }} 
-              />
+      <Modal visible={showAgreement} animationType="slide" transparent={true}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', padding: spacing.lg }}>
+          <View style={{ backgroundColor: colors.surface, borderRadius: radius.xl, overflow: 'hidden', paddingBottom: spacing.lg }}>
+            <View style={[styles.agreementHeader, { paddingHorizontal: spacing.md, paddingTop: spacing.md, paddingBottom: 0 }]}>
+              <Pressable onPress={() => setShowAgreement(false)} hitSlop={12} style={[styles.backBtn, { width: 32, height: 32 }]}>
+                <Ionicons name="close" size={24} color={colors.ink} />
+              </Pressable>
             </View>
             
-            <Text style={[styles.agreementTitle, { color: colors.ink }]}>Everyone belongs here</Text>
-            
-            <Text style={[styles.agreementText, { color: colors.inkSoft, marginBottom: spacing.lg }]}>
-              When you join Airbnb, we ask you to agree to our <Text style={{ fontWeight: '700', textDecorationLine: 'underline', color: colors.ink }}>Community Commitment</Text>:
-            </Text>
-            
-            <Text style={[styles.agreementText, { color: colors.inkSoft }]}>
-              I will treat everyone in the community—regardless of their race, religion, national origin, ethnicity, skin colour, disability, sex, gender identity, sexual orientation, or age—with respect, and without judgment or bias.
-            </Text>
-          </View>
+            <View style={[styles.agreementContent, { paddingTop: spacing.md, paddingHorizontal: spacing.lg }]}>
+              <View style={{ alignItems: 'center', marginBottom: spacing.lg }}>
+                <Image 
+                  source={{ uri: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/Airbnb_Logo_B%C3%A9lo.svg/512px-Airbnb_Logo_B%C3%A9lo.svg.png' }} 
+                  style={{ width: 44, height: 44, resizeMode: 'contain' }} 
+                />
+              </View>
+              
+              <Text style={[styles.agreementTitle, { color: colors.ink, textAlign: 'center', fontSize: 24, marginBottom: spacing.md }]}>Everyone belongs here</Text>
+              
+              <Text style={[styles.agreementText, { color: colors.inkSoft, marginBottom: spacing.md, textAlign: 'center' }]}>
+                When you join Airbnb, we ask you to agree to our <Text style={{ fontWeight: '700', textDecorationLine: 'underline', color: colors.ink }}>Community Commitment</Text>:
+              </Text>
+              
+              <Text style={[styles.agreementText, { color: colors.inkSoft, textAlign: 'center', fontSize: 15 }]}>
+                I will treat everyone in the community—regardless of their race, religion, national origin, ethnicity, skin colour, disability, sex, gender identity, sexual orientation, or age—with respect, and without judgment or bias.
+              </Text>
+            </View>
 
-          <View style={styles.agreementFooter}>
-            <Button 
-              title="Agree and continue" 
-              onPress={submit} 
-              loading={loading}
-              size="lg"
-              style={{ backgroundColor: '#E31C5F', borderColor: '#E31C5F' }} // Airbnb style primary red/pink
-            />
-            <Button 
-              title="Decline" 
-              onPress={() => setShowAgreement(false)} 
-              variant="ghost"
-              size="lg" 
-              style={{ marginTop: spacing.sm }}
-            />
+            <View style={[styles.agreementFooter, { paddingHorizontal: spacing.lg, paddingBottom: spacing.sm, paddingTop: spacing.lg }]}>
+              <Button 
+                title="Agree and continue" 
+                onPress={submit} 
+                loading={loading}
+                size="lg"
+                style={{ backgroundColor: '#E31C5F', borderColor: '#E31C5F' }}
+              />
+              <Button 
+                title="Decline" 
+                onPress={() => setShowAgreement(false)} 
+                variant="ghost"
+                size="lg" 
+                style={{ marginTop: spacing.xs }}
+              />
+            </View>
           </View>
-        </Screen>
+        </View>
       </Modal>
     </Screen>
   );
