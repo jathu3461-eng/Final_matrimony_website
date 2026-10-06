@@ -96,8 +96,6 @@ export default function Signup() {
   const [showPw, setShowPw] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [serverError, setServerError] = useState('');
-  const [showAgreement, setShowAgreement] = useState(false);
-  const [pendingValues, setPendingValues] = useState(null);
 
   const schema = useMemo(() => createSignupSchema(isBroker), [isBroker]);
 
@@ -140,7 +138,7 @@ export default function Signup() {
     setServerError('');
   };
 
-  const onSubmit = handleSubmit((values) => {
+  const onSubmit = handleSubmit(async (values) => {
     setServerError('');
     if (!getValues('terms')) {
       setError('terms', { type: 'manual', message: t('err_terms') });
@@ -152,20 +150,12 @@ export default function Signup() {
       formattedPhone = '+' + formattedPhone.replace(/\D/g, '');
     }
 
-    setPendingValues({
-      ...values,
-      formattedPhone,
-    });
-    setShowAgreement(true);
-  });
-
-  const handleConfirmAgreement = async () => {
     const payload = {
-      username: pendingValues.username.trim().replace(/\s+/g, '_'),
-      email: pendingValues.email.trim(),
-      password: pendingValues.password,
-      phone_number: pendingValues.formattedPhone,
-      business_name: isBroker ? pendingValues.business_name.trim() : undefined,
+      username: values.username.trim().replace(/\s+/g, '_'),
+      email: values.email.trim(),
+      password: values.password,
+      phone_number: formattedPhone,
+      business_name: isBroker ? values.business_name.trim() : undefined,
       role: isBroker ? 'broker' : 'regular',
     };
 
@@ -184,57 +174,11 @@ export default function Signup() {
       } else {
         setServerError(err.response?.data?.error || 'Something went wrong. Please try again.');
       }
-      setShowAgreement(false);
     }
-  };
+  });
 
   if (authLoading) return null;
   if (user) return <Navigate to="/dashboard" replace />;
-
-  if (showAgreement) {
-    return (
-      <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6 relative animate-[fade-in_0.3s_ease-out]">
-        <div className="absolute top-6 left-6">
-          <button onClick={() => setShowAgreement(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-          </button>
-        </div>
-        
-        <div className="max-w-md w-full space-y-8">
-          <div className="flex justify-center">
-            <div className="w-12 h-12 bg-[#E31C5F] rounded-lg"></div> {/* Placeholder logo */}
-          </div>
-          
-          <h1 className="text-3xl font-bold text-center text-gray-900 tracking-tight">Everyone belongs here</h1>
-          
-          <div className="space-y-6">
-            <p className="text-lg text-gray-600">
-              When you join our community, we ask you to agree to our <span className="font-semibold text-gray-900 underline underline-offset-2">Community Commitment</span>:
-            </p>
-            <p className="text-lg text-gray-600">
-              I will treat everyone in the community—regardless of their race, religion, national origin, ethnicity, skin colour, disability, sex, gender identity, sexual orientation, or age—with respect, and without judgment or bias.
-            </p>
-          </div>
-
-          <div className="pt-8 space-y-4">
-            <button
-              onClick={handleConfirmAgreement}
-              disabled={isSubmitting}
-              className="w-full py-4 px-6 bg-[#E31C5F] hover:bg-[#c1144e] text-white font-bold rounded-xl transition-colors disabled:opacity-50"
-            >
-              Agree and continue
-            </button>
-            <button
-              onClick={() => setShowAgreement(false)}
-              className="w-full py-4 px-6 text-gray-900 font-semibold hover:bg-gray-50 rounded-xl transition-colors"
-            >
-              Decline
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <AuthLayout

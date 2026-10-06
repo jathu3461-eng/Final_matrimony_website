@@ -2,12 +2,14 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
   Image,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as ImagePicker from 'expo-image-picker';
@@ -223,16 +225,15 @@ export function EditProfileScreen() {
 
   return (
     <Screen edges={['bottom']}>
-      <KeyboardAwareScrollView
+      <KeyboardAvoidingView
         style={styles.flex}
-        contentContainerStyle={styles.content}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-        enableOnAndroid
-        enableAutomaticScroll
-        extraScrollHeight={100}
-        extraHeight={100}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
+        <ScrollView
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
           {/* Photo section */}
           <View style={styles.photoSection}>
             <Pressable onPress={showPhotoOptions} style={styles.photoWrap}>
@@ -481,6 +482,8 @@ export function EditProfileScreen() {
               setForm((f) => ({ ...f, intro_video_status: uri ? 'selected' : (f.intro_video_status === 'uploaded' ? 'uploaded' : '') }));
             }}
           />
+        </ScrollView>
+
         {/* Save button */}
         <View style={[styles.bottomBar, { borderTopColor: colors.border, backgroundColor: colors.surface }]}>
           <Button
@@ -492,7 +495,7 @@ export function EditProfileScreen() {
             leftIcon="checkmark-circle"
           />
         </View>
-      </KeyboardAwareScrollView>
+      </KeyboardAvoidingView>
 
       {/* Video Upload Progress Overlay */}
       {videoUploading && (

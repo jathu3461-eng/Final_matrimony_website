@@ -1,11 +1,13 @@
 import { useMemo, useState } from 'react';
 import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
   StyleSheet,
   Text,
   View,
   Pressable,
 } from 'react-native';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -61,15 +63,15 @@ export function LoginScreen() {
 
   return (
     <Screen>
-      <KeyboardAwareScrollView
+      <KeyboardAvoidingView
         style={styles.flex}
-        contentContainerStyle={styles.content}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-        enableOnAndroid
-        enableAutomaticScroll
-        extraScrollHeight={80}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
+        <ScrollView
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
           <View style={styles.header}>
             <AnimatedLogo shape="squircle" size={120} />
             <Text style={[styles.brand, { color: colors.primary }]}>Mukurtham</Text>
@@ -183,7 +185,8 @@ export function LoginScreen() {
               <Text style={[styles.secureText, { color: colors.success }]}>Secure & Private</Text>
             </View>
           </View>
-      </KeyboardAwareScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </Screen>
   );
 }

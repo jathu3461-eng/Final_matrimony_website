@@ -1,12 +1,13 @@
 import { useMemo, useState } from 'react';
 import {
-  Modal,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -58,7 +59,6 @@ export function RegisterScreen() {
   const { colors } = useTheme();
   const [loading, setLoading] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
-  const [showAgreement, setShowAgreement] = useState(false);
 
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -98,7 +98,7 @@ export function RegisterScreen() {
 
   const hasErrors = Object.values(errors).some(Boolean);
 
-  const handleRegisterPress = () => {
+  const submit = async () => {
     setTouched({
       username: true,
       email: true,
@@ -109,11 +109,6 @@ export function RegisterScreen() {
       terms: true,
     });
     if (hasErrors) return;
-    setShowAgreement(true);
-  };
-
-  const submit = async () => {
-    setShowAgreement(false);
 
     setServerError(null);
     setLoading(true);
@@ -140,15 +135,15 @@ export function RegisterScreen() {
 
   return (
     <Screen edges={['bottom']}>
-      <KeyboardAwareScrollView
+      <KeyboardAvoidingView
         style={styles.flex}
-        contentContainerStyle={styles.content}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-        enableOnAndroid
-        enableAutomaticScroll
-        extraScrollHeight={80}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
+        <ScrollView
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
           <RegisterHeader />
 
           <View style={styles.header}>
@@ -343,7 +338,7 @@ export function RegisterScreen() {
               </View>
             )}
 
-            <Button title="Create Account" onPress={handleRegisterPress} loading={loading} size="lg" />
+            <Button title="Create Account" onPress={submit} loading={loading} size="lg" />
           </View>
 
           <View style={styles.footer}>
@@ -360,50 +355,8 @@ export function RegisterScreen() {
               />
             </View>
           </View>
-      </KeyboardAwareScrollView>
-
-      <Modal visible={showAgreement} animationType="slide" transparent={false}>
-        <Screen edges={['top', 'bottom']} style={styles.agreementScreen}>
-          <View style={styles.agreementHeader}>
-            <Pressable onPress={() => setShowAgreement(false)} hitSlop={12} style={styles.backBtn}>
-              <Ionicons name="arrow-back" size={24} color={colors.ink} />
-            </Pressable>
-          </View>
-          
-          <View style={styles.agreementContent}>
-            <View style={{ alignItems: 'center', marginBottom: spacing.xl }}>
-              <AnimatedLogo shape="hexagon" size={48} />
-            </View>
-            
-            <Text style={[styles.agreementTitle, { color: colors.ink }]}>Everyone belongs here</Text>
-            
-            <Text style={[styles.agreementText, { color: colors.inkSoft, marginBottom: spacing.lg }]}>
-              When you join our community, we ask you to agree to our <Text style={{ fontWeight: '700', textDecorationLine: 'underline', color: colors.ink }}>Community Commitment</Text>:
-            </Text>
-            
-            <Text style={[styles.agreementText, { color: colors.inkSoft }]}>
-              I will treat everyone in the community—regardless of their race, religion, national origin, ethnicity, skin colour, disability, sex, gender identity, sexual orientation, or age—with respect, and without judgment or bias.
-            </Text>
-          </View>
-
-          <View style={styles.agreementFooter}>
-            <Button 
-              title="Agree and continue" 
-              onPress={submit} 
-              loading={loading}
-              size="lg"
-              style={{ backgroundColor: '#E31C5F', borderColor: '#E31C5F' }} // Airbnb style primary red/pink
-            />
-            <Button 
-              title="Decline" 
-              onPress={() => setShowAgreement(false)} 
-              variant="ghost"
-              size="lg" 
-              style={{ marginTop: spacing.sm }}
-            />
-          </View>
-        </Screen>
-      </Modal>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </Screen>
   );
 }
@@ -528,31 +481,5 @@ const styles = StyleSheet.create({
   termsError: {
     ...typography.label,
     marginBottom: spacing.sm,
-  },
-  agreementScreen: {
-    flex: 1,
-  },
-  agreementHeader: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.md,
-  },
-  agreementContent: {
-    flex: 1,
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.xl,
-  },
-  agreementTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    marginBottom: spacing.lg,
-  },
-  agreementText: {
-    fontSize: 16,
-    lineHeight: 24,
-  },
-  agreementFooter: {
-    paddingHorizontal: spacing.xl,
-    paddingBottom: spacing.xl,
   },
 });
