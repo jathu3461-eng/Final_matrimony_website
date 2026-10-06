@@ -161,7 +161,7 @@ export default function Landing() {
               </Badge>
 
               <h1 className="font-display text-4xl sm:text-5xl xl:text-6xl font-extrabold text-[var(--ink)] leading-[1.12] mb-5">
-                {t('landing_hero_title1').replace('Life Partner', '')} <span className="text-gradient">Life Partner</span> <br />
+                <span className="text-gradient">{t('landing_hero_title1')}</span> <br />
                 {t('landing_hero_title2')}
               </h1>
 
