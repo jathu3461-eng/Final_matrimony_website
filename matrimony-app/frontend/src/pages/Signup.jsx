@@ -372,14 +372,14 @@ export default function Signup() {
 
           <motion.div variants={fadeUp} className="bg-pink-50/50 rounded-xl p-4 border border-pink-200 mt-4 shadow-sm">
             <h3 className="text-[13px] font-extrabold text-pink-900 mb-1 flex items-center gap-1.5">
-              <span>🤝</span> Everyone belongs here
+              <span>🤝</span> {t('community_commitment_title')}
             </h3>
             <p className="text-[12px] text-[var(--ink-soft)] leading-relaxed font-semibold mb-2">
-              When you join Mukurtham Matrimony, we ask you to agree to our <span className="font-bold text-pink-700">Community Commitment</span>:
+              {t('community_commitment_intro')}
             </p>
             <div className="bg-white/60 rounded-lg p-3 border border-pink-100">
               <p className="text-[12px] text-[var(--ink-faint)] leading-relaxed font-medium italic">
-                "I will treat everyone in the community—regardless of their race, religion, national origin, ethnicity, skin colour, disability, sex, gender identity, sexual orientation, or age—with respect, and without judgment or bias."
+                {t('community_commitment_body')}
               </p>
             </div>
           </motion.div>

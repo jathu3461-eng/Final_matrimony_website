@@ -12,6 +12,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/Button';
 import { FormField } from '@/components/FormField';
 import { PhoneNumberInput } from '@/components/PhoneNumberInput';
@@ -57,6 +58,7 @@ function RegisterHeader() {
 export function RegisterScreen() {
   const navigation = useNavigation<Nav>();
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
 
@@ -327,15 +329,15 @@ export function RegisterScreen() {
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
                 <Text style={{ fontSize: 14 }}>🤝 </Text>
                 <Text style={{ fontSize: 14, fontWeight: '800', color: '#831843' }}>
-                  Everyone belongs here
+                  {t('community_commitment_title')}
                 </Text>
               </View>
               <Text style={{ fontSize: 12, fontWeight: '600', color: colors.inkSoft, marginBottom: spacing.sm, lineHeight: 18 }}>
-                When you join Mukurtham Matrimony, we ask you to agree to our <Text style={{ fontWeight: '700', color: '#be185d' }}>Community Commitment</Text>:
+                {t('community_commitment_intro')}
               </Text>
               <View style={{ backgroundColor: 'rgba(255,255,255,0.7)', padding: spacing.sm, borderRadius: radius.md, borderColor: '#fce7f3', borderWidth: 1 }}>
                 <Text style={{ fontSize: 12, color: colors.inkFaint, lineHeight: 18, fontStyle: 'italic', fontWeight: '500' }}>
-                  "I will treat everyone in the community—regardless of their race, religion, national origin, ethnicity, skin colour, disability, sex, gender identity, sexual orientation, or age—with respect, and without judgment or bias."
+                  {t('community_commitment_body')}
                 </Text>
               </View>
             </View>
