@@ -36,7 +36,7 @@ import type { AuthStackParamList } from '@/navigation/types';
 
 type Nav = NativeStackNavigationProp<AuthStackParamList>;
 
-function RegisterHeader() {
+function RegisterHeader({ t }: { t: (key: string) => string }) {
   const navigation = useNavigation<Nav>();
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
@@ -49,7 +49,7 @@ function RegisterHeader() {
       >
         <Ionicons name="arrow-back" size={22} color={colors.ink} />
       </Pressable>
-      <Text style={[styles.headerTitle, { color: colors.ink }]}>Create Account</Text>
+      <Text style={[styles.headerTitle, { color: colors.ink }]}>{t('mob_create_account')}</Text>
       <View style={styles.backBtn} />
     </View>
   );
@@ -150,12 +150,12 @@ export function RegisterScreen() {
         enableAutomaticScroll
         extraScrollHeight={80}
       >
-          <RegisterHeader />
+          <RegisterHeader t={t} />
 
           <View style={styles.header}>
             <AnimatedLogo shape="hexagon" size={100} />
             <Text style={[styles.subtitle, { color: colors.inkFaint }]}>
-              Start your journey to find the perfect match
+              {t('mob_register_subtitle')}
             </Text>
           </View>
 
@@ -171,14 +171,14 @@ export function RegisterScreen() {
           >
             <View style={styles.roleRow}>
               <Button
-                title="Regular User"
+                title={t('mob_regular_user')}
                 variant={role === 'regular' ? 'primary' : 'outline'}
                 size="sm"
                 style={styles.roleBtn}
                 onPress={() => setRole('regular')}
               />
               <Button
-                title="Broker"
+                title={t('mob_broker')}
                 variant={role === 'broker' ? 'primary' : 'outline'}
                 size="sm"
                 style={styles.roleBtn}
@@ -187,11 +187,11 @@ export function RegisterScreen() {
             </View>
 
             <FormField
-              label="Username"
+              label={t('mob_username')}
               value={username}
               onChangeText={setUsername}
               onBlur={() => touch('username')}
-              placeholder="e.g. john_95"
+              placeholder={t('mob_username_placeholder')}
               autoCapitalize="none"
               autoCorrect={false}
               maxLength={60}
@@ -200,11 +200,11 @@ export function RegisterScreen() {
               hint={HINTS.username}
             />
             <FormField
-              label="Email"
+              label={t('mob_email')}
               value={email}
               onChangeText={setEmail}
               onBlur={() => touch('email')}
-              placeholder="e.g. john@gmail.com"
+              placeholder={t('mob_email_placeholder')}
               autoCapitalize="none"
               keyboardType="email-address"
               autoComplete="email"
@@ -212,7 +212,7 @@ export function RegisterScreen() {
               hint={HINTS.email}
             />
             <PhoneNumberInput
-              label="Phone number"
+              label={t('mob_phone')}
               value={phone}
               onChangeText={setPhone}
               onBlur={() => touch('phone')}
@@ -220,22 +220,22 @@ export function RegisterScreen() {
               hint={HINTS.phone}
             />
             <FormField
-              label="Password"
+              label={t('mob_password')}
               value={password}
               onChangeText={setPassword}
               onBlur={() => touch('password')}
-              placeholder="Create a strong password"
+              placeholder={t('mob_password_placeholder')}
               secure
               autoCapitalize="none"
               error={errors.password}
               hint={HINTS.password}
             />
             <FormField
-              label="Confirm password"
+              label={t('mob_confirm_password')}
               value={confirm}
               onChangeText={setConfirm}
               onBlur={() => touch('confirm')}
-              placeholder="Re-enter password"
+              placeholder={t('mob_confirm_placeholder')}
               secure
               autoCapitalize="none"
               error={errors.confirm}
@@ -269,18 +269,18 @@ export function RegisterScreen() {
                   {passwordStrength === 0
                     ? ''
                     : passwordStrength === 1
-                      ? 'Weak'
+                      ? t('mob_pw_weak')
                       : passwordStrength === 2
-                        ? 'Good'
-                        : 'Strong'}
+                        ? t('mob_pw_good')
+                        : t('mob_pw_strong')}
                 </Text>
 
                 {/* Password checklist */}
                 <View style={styles.checklist}>
                   {[
-                    { label: 'At least 8 characters', ok: password.length >= 8 },
-                    { label: '1 uppercase letter', ok: /[A-Z]/.test(password) },
-                    { label: '1 special character', ok: /[!@#$%^&*(),.?":{}|<>]/.test(password) },
+                    { label: t('mob_pw_rule_8chars'), ok: password.length >= 8 },
+                    { label: t('mob_pw_rule_upper'), ok: /[A-Z]/.test(password) },
+                    { label: t('mob_pw_rule_special'), ok: /[!@#$%^&*(),.?":{}|<>]/.test(password) },
                   ].map((rule) => (
                     <View key={rule.label} style={styles.checkRow}>
                       <Ionicons
@@ -315,10 +315,10 @@ export function RegisterScreen() {
                 />
               </Pressable>
               <Text style={[styles.termsText, { color: colors.inkSoft }]}>
-                I agree to the{' '}
-                <Text style={{ color: colors.primary, fontWeight: '600' }}>Terms & Conditions</Text>
-                {' '}and{' '}
-                <Text style={{ color: colors.primary, fontWeight: '600' }}>Privacy Policy</Text>
+                {t('mob_terms_agree')}{' '}
+                <Text style={{ color: colors.primary, fontWeight: '600' }}>{t('mob_terms_conditions')}</Text>
+                {' '}{t('mob_terms_and')}{' '}
+                <Text style={{ color: colors.primary, fontWeight: '600' }}>{t('mob_terms_privacy')}</Text>
               </Text>
             </View>
             {errors.terms && (
@@ -344,11 +344,11 @@ export function RegisterScreen() {
 
             {role === 'broker' && (
               <FormField
-                label="Business name"
+                label={t('mob_business_name')}
                 value={businessName}
                 onChangeText={setBusinessName}
                 onBlur={() => touch('businessName')}
-                placeholder="Your agency name"
+                placeholder={t('mob_business_placeholder')}
                 error={errors.businessName}
                 hint={HINTS.businessName}
               />
@@ -361,16 +361,16 @@ export function RegisterScreen() {
               </View>
             )}
 
-            <Button title="Create Account" onPress={handleRegisterPress} loading={loading} size="lg" />
+            <Button title={t('mob_create_account')} onPress={handleRegisterPress} loading={loading} size="lg" />
           </View>
 
           <View style={styles.footer}>
             <View style={styles.loginRow}>
               <Text style={[styles.loginText, { color: colors.inkSoft }]}>
-                Already have an account?{' '}
+                {t('mob_already_account')}{' '}
               </Text>
               <Button
-                title="Log in"
+                title={t('mob_log_in')}
                 variant="ghost"
                 size="sm"
                 titleStyle={{ fontWeight: '700' }}

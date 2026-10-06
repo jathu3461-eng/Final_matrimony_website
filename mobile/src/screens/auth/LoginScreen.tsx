@@ -21,6 +21,7 @@ import { validateEmailOrPhone, validateLoginPassword, fieldError } from '@/utils
 import { useTheme } from '@/theme';
 import { radius, spacing, typography, layout } from '@/theme';
 import type { AuthStackParamList } from '@/navigation/types';
+import { useTranslation } from 'react-i18next';
 
 type Nav = NativeStackNavigationProp<AuthStackParamList>;
 
@@ -28,6 +29,7 @@ export function LoginScreen() {
   const navigation = useNavigation<Nav>();
   const dispatch = useAppDispatch();
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const { status, error } = useAppSelector((s) => s.auth);
   const loading = status === 'loading';
 
@@ -74,7 +76,7 @@ export function LoginScreen() {
             <AnimatedLogo shape="squircle" size={120} />
             <Text style={[styles.brand, { color: colors.primary }]}>Mukurtham</Text>
             <Text style={[styles.tagline, { color: colors.inkSoft }]}>
-              Matrimony, made meaningful
+              {t('mob_login_tagline')}
             </Text>
           </View>
 
@@ -88,9 +90,9 @@ export function LoginScreen() {
               },
             ]}
           >
-            <Text style={[styles.welcome, { color: colors.ink }]}>Welcome back</Text>
+            <Text style={[styles.welcome, { color: colors.ink }]}>{t('mob_welcome_back')}</Text>
             <Text style={[styles.hint, { color: colors.inkFaint }]}>
-              Sign in to continue your journey
+              {t('mob_login_subtitle')}
             </Text>
 
             <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
@@ -101,7 +103,7 @@ export function LoginScreen() {
                 ]}
                 onPress={() => { setLoginType('email'); setTouched(t => ({...t, email: false})) }}
               >
-                <Text style={[{ fontSize: 12, fontWeight: 'bold' }, loginType === 'email' ? { color: colors.ink } : { color: colors.inkFaint }]}>Email</Text>
+                <Text style={[{ fontSize: 12, fontWeight: 'bold' }, loginType === 'email' ? { color: colors.ink } : { color: colors.inkFaint }]}>{t('mob_email_tab')}</Text>
               </Pressable>
               <Pressable 
                 style={[
@@ -110,39 +112,39 @@ export function LoginScreen() {
                 ]}
                 onPress={() => { setLoginType('phone'); setTouched(t => ({...t, email: false})) }}
               >
-                <Text style={[{ fontSize: 12, fontWeight: 'bold' }, loginType === 'phone' ? { color: colors.ink } : { color: colors.inkFaint }]}>Phone</Text>
+                <Text style={[{ fontSize: 12, fontWeight: 'bold' }, loginType === 'phone' ? { color: colors.ink } : { color: colors.inkFaint }]}>{t('mob_phone_tab')}</Text>
               </Pressable>
             </View>
 
             {loginType === 'email' ? (
               <FormField
-                label="Email"
+                label={t('mob_email')}
                 value={email}
                 onChangeText={setEmail}
                 onBlur={() => touch('email')}
-                placeholder="you@example.com"
+                placeholder={t('mob_email_login_placeholder')}
                 autoCapitalize="none"
                 keyboardType="email-address"
                 autoComplete="email"
                 error={errors.email}
-                hint="Enter your registered email"
+                hint={t('mob_email_hint')}
               />
             ) : (
               <PhoneNumberInput
-                label="Phone number"
+                label={t('mob_phone')}
                 value={email}
                 onChangeText={setEmail}
                 onBlur={() => touch('email')}
                 error={errors.email}
-                hint="Enter your registered phone number"
+                hint={t('mob_phone_hint')}
               />
             )}
             <FormField
-              label="Password"
+              label={t('mob_password')}
               value={password}
               onChangeText={setPassword}
               onBlur={() => touch('password')}
-              placeholder="Your password"
+              placeholder={t('mob_password_login_placeholder')}
               secure
               autoCapitalize="none"
               onSubmitEditing={submit}
@@ -158,20 +160,20 @@ export function LoginScreen() {
               </View>
             )}
 
-            <Button title="Log In" onPress={submit} loading={loading} size="lg" />
+            <Button title={t('mob_login_btn')} onPress={submit} loading={loading} size="lg" />
           </View>
 
           <View style={styles.footer}>
             <Button
-              title="Forgot password?"
+              title={t('mob_forgot_password')}
               variant="ghost"
               size="sm"
               onPress={() => navigation.navigate('ForgotPassword')}
             />
             <View style={styles.signupRow}>
-              <Text style={[styles.signupText, { color: colors.inkSoft }]}>New here? </Text>
+              <Text style={[styles.signupText, { color: colors.inkSoft }]}>{t('mob_new_here')} </Text>
               <Button
-                title="Create account"
+                title={t('mob_create_account_link')}
                 variant="ghost"
                 size="sm"
                 titleStyle={{ fontWeight: '700' }}
@@ -180,7 +182,7 @@ export function LoginScreen() {
             </View>
             <View style={[styles.secureBadge, { backgroundColor: colors.successSoft }]}>
               <Ionicons name="shield-checkmark" size={14} color={colors.success} />
-              <Text style={[styles.secureText, { color: colors.success }]}>Secure & Private</Text>
+              <Text style={[styles.secureText, { color: colors.success }]}>{t('mob_secure_private')}</Text>
             </View>
           </View>
       </KeyboardAwareScrollView>
