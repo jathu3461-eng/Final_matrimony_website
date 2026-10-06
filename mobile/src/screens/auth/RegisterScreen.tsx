@@ -323,13 +323,21 @@ export function RegisterScreen() {
               <Text style={[styles.termsError, { color: colors.error }]}>{errors.terms}</Text>
             )}
 
-            <View style={{ backgroundColor: '#fdf2f8', padding: spacing.md, borderRadius: radius.lg, marginTop: spacing.xs, marginBottom: spacing.md, borderColor: '#fce7f3', borderWidth: 1 }}>
-              <Text style={{ fontSize: 12, fontWeight: '600', color: colors.inkSoft, marginBottom: spacing.xs }}>
-                When you join Mukurtham Matrimony, we ask you to agree to our <Text style={{ fontWeight: '700', textDecorationLine: 'underline' }}>Community Commitment</Text>:
+            <View style={{ backgroundColor: '#fdf2f8', padding: spacing.md, borderRadius: radius.lg, marginTop: spacing.md, marginBottom: spacing.md, borderColor: '#fbcfe8', borderWidth: 1, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 3, shadowOffset: { width: 0, height: 1 }, elevation: 2 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                <Text style={{ fontSize: 14 }}>🤝 </Text>
+                <Text style={{ fontSize: 14, fontWeight: '800', color: '#831843' }}>
+                  Everyone belongs here
+                </Text>
+              </View>
+              <Text style={{ fontSize: 12, fontWeight: '600', color: colors.inkSoft, marginBottom: spacing.sm, lineHeight: 18 }}>
+                When you join Mukurtham Matrimony, we ask you to agree to our <Text style={{ fontWeight: '700', color: '#be185d' }}>Community Commitment</Text>:
               </Text>
-              <Text style={{ fontSize: 12, color: colors.inkFaint, lineHeight: 18 }}>
-                I will treat everyone in the community—regardless of their race, religion, national origin, ethnicity, skin colour, disability, sex, gender identity, sexual orientation, or age—with respect, and without judgment or bias.
-              </Text>
+              <View style={{ backgroundColor: 'rgba(255,255,255,0.7)', padding: spacing.sm, borderRadius: radius.md, borderColor: '#fce7f3', borderWidth: 1 }}>
+                <Text style={{ fontSize: 12, color: colors.inkFaint, lineHeight: 18, fontStyle: 'italic', fontWeight: '500' }}>
+                  "I will treat everyone in the community—regardless of their race, religion, national origin, ethnicity, skin colour, disability, sex, gender identity, sexual orientation, or age—with respect, and without judgment or bias."
+                </Text>
+              </View>
             </View>
 
             {role === 'broker' && (
