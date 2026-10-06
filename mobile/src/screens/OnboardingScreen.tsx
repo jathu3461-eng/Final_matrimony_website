@@ -10,6 +10,8 @@ import { tokenStorage } from '@/services/tokenStorage';
 import { useTheme } from '@/theme';
 import { spacing, typography } from '@/theme';
 import type { RootStackParamList } from '@/navigation/types';
+import { useTranslation } from 'react-i18next';
+import { useMemo } from 'react';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -18,8 +20,31 @@ export function OnboardingScreen() {
   const insets = useSafeAreaInsets();
   const [index, setIndex] = useState(0);
   const navigation = useNavigation<Nav>();
-  const isLast = index === SLIDES.length - 1;
-  const slide = SLIDES[index];
+  const { t } = useTranslation();
+
+  const slides = useMemo(() => [
+    {
+      title: t('onboarding_title1'),
+      subtitle: t('onboarding_desc1'),
+      icon: 'heart' as const,
+      color: '#e0136a',
+    },
+    {
+      title: t('onboarding_title2'),
+      subtitle: t('onboarding_desc2'),
+      icon: 'shield-checkmark' as const,
+      color: '#16a34a',
+    },
+    {
+      title: t('onboarding_title3'),
+      subtitle: t('onboarding_desc3'),
+      icon: 'chatbubbles' as const,
+      color: '#2563eb',
+    },
+  ], [t]);
+
+  const isLast = index === slides.length - 1;
+  const slide = slides[index];
 
   const finish = async () => {
     await tokenStorage.setOnboardingDone();
@@ -31,7 +56,7 @@ export function OnboardingScreen() {
       <View style={[styles.topRow, { paddingTop: insets.top + spacing.md }]}>
         <AnimatedLogo shape="diamond" size={44} />
         {!isLast && (
-          <Button title="Skip" variant="ghost" size="sm" onPress={finish} />
+          <Button title={t('onboarding_skip')} variant="ghost" size="sm" onPress={finish} />
         )}
       </View>
 
@@ -45,7 +70,7 @@ export function OnboardingScreen() {
 
       <View style={styles.bottom}>
         <View style={styles.dots}>
-          {SLIDES.map((_, i) => (
+          {slides.map((_, i) => (
             <View
               key={i}
               style={[
@@ -57,7 +82,7 @@ export function OnboardingScreen() {
           ))}
         </View>
         <Button
-          title={isLast ? 'Get Started' : 'Next'}
+          title={isLast ? t('onboarding_get_started') : t('onboarding_next')}
           size="lg"
           onPress={() => (isLast ? finish() : setIndex((i) => i + 1))}
         />
@@ -66,26 +91,7 @@ export function OnboardingScreen() {
   );
 }
 
-const SLIDES = [
-  {
-    title: 'Find your\nperfect match',
-    subtitle: 'Browse genuine profiles curated for the Tamil community, worldwide.',
-    icon: 'heart' as const,
-    color: '#e0136a',
-  },
-  {
-    title: 'Verified\nprofiles only',
-    subtitle: 'Every profile is reviewed by our team so you connect with confidence.',
-    icon: 'shield-checkmark' as const,
-    color: '#16a34a',
-  },
-  {
-    title: 'Meaningful\nconversations',
-    subtitle: 'Send interests, chat safely once you match. Your privacy stays protected.',
-    icon: 'chatbubbles' as const,
-    color: '#2563eb',
-  },
-];
+
 
 const styles = StyleSheet.create({
   container: {

@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Search, ArrowRight, ShieldCheck, Lock, Sparkles, Headphones, Gift, Check, HeartHandshake, BadgeCheck } from 'lucide-react';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
+import { useI18n } from '../context/I18nContext';
 import ProfileCard from '../components/ProfileCard';
 import { Button, Badge, TiltCard } from '../components/ui';
 import CtaBanner from '../components/landing/CtaBanner';
@@ -86,6 +87,7 @@ const reveal = {
 export default function Landing() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { t } = useI18n();
   const [recommendedProfiles, setRecommendedProfiles] = useState([]);
   const [heroImgIndex, setHeroImgIndex] = useState(0);
   const heroSources = ['/uploads/hero_couple.png', '/uploads/couple_hero.png'];
@@ -109,9 +111,9 @@ export default function Landing() {
   const selectCls = 'input-base text-xs font-bold py-3 px-3.5';
 
   const featurePills = [
-    { icon: <BadgeCheck className="w-3.5 h-3.5" aria-hidden="true" />, label: '100% Verified Profiles' },
-    { icon: <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />, label: 'AI Smart Matching' },
-    { icon: <ShieldCheck className="w-3.5 h-3.5" aria-hidden="true" />, label: 'Privacy First' },
+    { icon: <BadgeCheck className="w-3.5 h-3.5" aria-hidden="true" />, label: t('landing_feat1') },
+    { icon: <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />, label: t('landing_feat2') },
+    { icon: <ShieldCheck className="w-3.5 h-3.5" aria-hidden="true" />, label: t('landing_feat3') },
   ];
 
   const testimonials = [
@@ -128,10 +130,10 @@ export default function Landing() {
   ];
 
   const stats = [
-    { value: '50K+', label: 'Success Stories' },
-    { value: '10K+', label: 'Verified Profiles' },
-    { value: '5K+', label: 'Matches / Day' },
-    { value: '98%', label: 'Member Satisfaction' },
+    { value: '50K+', label: t('landing_stat1') },
+    { value: '10K+', label: t('landing_stat2') },
+    { value: '5K+', label: t('landing_stat3') },
+    { value: '98%', label: t('landing_stat4') },
   ];
 
   return (
@@ -155,24 +157,24 @@ export default function Landing() {
           <div className="lg:col-span-6 text-left">
             <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
               <Badge variant="primary" icon={<span>💖</span>} className="mb-5">
-                Trusted by Millions. Loved for Happiness.
+                {t('landing_trusted')}
               </Badge>
 
               <h1 className="font-display text-4xl sm:text-5xl xl:text-6xl font-extrabold text-[var(--ink)] leading-[1.12] mb-5">
-                Find Your Perfect <span className="text-gradient">Life Partner</span> <br />
-                Begin Your Beautiful Journey
+                {t('landing_hero_title1').replace('Life Partner', '')} <span className="text-gradient">Life Partner</span> <br />
+                {t('landing_hero_title2')}
               </h1>
 
               <p className="text-sm sm:text-base text-[var(--ink-soft)] max-w-lg mb-8 leading-relaxed font-medium">
-                Lakhs of happy couples. Find your perfect life partner today rooted in Tamil culture and diaspora values — with verified profiles and AI-powered smart matching.
+                {t('landing_hero_desc')}
               </p>
 
               <div className="flex flex-wrap items-center gap-3 mb-8">
                 <Button onClick={goRegister} size="lg" className="!rounded-full !px-8 !shadow-[0_18px_40px_-10px_rgba(224,19,106,0.55)] hover:!-translate-y-1">
-                  Create Profile Free <ArrowRight className="w-5 h-5" aria-hidden="true" />
+                  {t('landing_btn_create')} <ArrowRight className="w-5 h-5" aria-hidden="true" />
                 </Button>
                 <Button onClick={() => navigate('/search')} variant="secondary" size="lg" className="!rounded-full !px-7">
-                  <Search className="w-4 h-4" aria-hidden="true" /> Search Matches
+                  <Search className="w-4 h-4" aria-hidden="true" /> {t('landing_btn_search')}
                 </Button>
               </div>
 
@@ -260,15 +262,15 @@ export default function Landing() {
                 <Search className="w-5 h-5" aria-hidden="true" />
               </div>
               <div>
-                <h3 className="font-display text-lg font-extrabold text-[var(--ink)]">Find Your Match</h3>
-                <p className="text-[11px] font-semibold text-[var(--ink-faint)]">Search lakhs of verified Tamil profiles</p>
+                <h3 className="font-display text-lg font-extrabold text-[var(--ink)]">{t('landing_find_match_title')}</h3>
+                <p className="text-[11px] font-semibold text-[var(--ink-faint)]">{t('landing_find_match_desc')}</p>
               </div>
             </div>
             <button
               onClick={() => navigate('/search')}
               className="flex items-center gap-1 text-xs font-bold text-[var(--primary)] hover:underline"
             >
-              Advanced Search <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
+              {t('landing_advanced_search')} <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
             </button>
           </div>
 
@@ -359,16 +361,16 @@ export default function Landing() {
       <section className="max-w-7xl mx-auto px-5 py-12 lg:py-16">
         <motion.div {...reveal} className="flex flex-wrap items-end justify-between gap-4 mb-8">
           <div>
-            <span className="text-xs font-extrabold uppercase tracking-wider text-[var(--primary)]">Handpicked For You</span>
+            <span className="text-xs font-extrabold uppercase tracking-wider text-[var(--primary)]">{t('landing_handpicked')}</span>
             <h2 className="font-display text-3xl font-extrabold text-[var(--ink)] flex items-center gap-2 mt-1">
-              Featured Profiles 💖
+              {t('landing_featured_profiles')}
             </h2>
             <p className="text-xs text-[var(--ink-faint)] font-semibold mt-1">
-              Meet verified members ready for a beautiful journey ahead
+              {t('landing_featured_desc')}
             </p>
           </div>
           <button onClick={() => navigate('/search')} className="flex items-center gap-1 text-xs font-bold text-[var(--primary)] hover:underline">
-            View All <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
+            {t('landing_view_all')} <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
           </button>
         </motion.div>
 
@@ -386,12 +388,12 @@ export default function Landing() {
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[var(--surface-muted)] to-transparent pointer-events-none" />
         <div className="max-w-7xl mx-auto px-5 relative">
           <motion.div {...reveal} className="text-center mb-12">
-            <span className="text-xs font-extrabold uppercase tracking-wider text-[var(--primary)]">Real Stories, Real Happiness</span>
+            <span className="text-xs font-extrabold uppercase tracking-wider text-[var(--primary)]">{t('landing_stories_tag')}</span>
             <h2 className="font-display text-3xl sm:text-4xl font-extrabold text-[var(--ink)] mt-2 mb-3">
-              Couples Who Found Forever 💕
+              {t('landing_stories_title')}
             </h2>
             <p className="text-sm text-[var(--ink-soft)] font-medium max-w-xl mx-auto">
-              Every week, more couples write their love stories with us.
+              {t('landing_stories_desc')}
             </p>
           </motion.div>
 
@@ -421,7 +423,7 @@ export default function Landing() {
                   <div>
                     <h4 className="font-display text-sm font-extrabold text-[var(--ink)]">{t.name}</h4>
                     <span className="text-[10px] font-bold text-[var(--primary)] flex items-center gap-1">
-                      <BadgeCheck className="w-3 h-3" aria-hidden="true" /> Verified Couple
+                      <BadgeCheck className="w-3 h-3" aria-hidden="true" /> {t('landing_verified_couple')}
                     </span>
                   </div>
                 </div>
