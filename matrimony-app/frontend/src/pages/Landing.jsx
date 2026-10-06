@@ -398,9 +398,9 @@ export default function Landing() {
           </motion.div>
 
           <div className="grid md:grid-cols-3 gap-6">
-            {testimonials.map((t, i) => (
+            {testimonials.map((item, i) => (
               <motion.div
-                key={t.name}
+                key={item.name}
                 initial={{ opacity: 0, y: 24 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: '-60px' }}
@@ -414,14 +414,14 @@ export default function Landing() {
                   ))}
                 </div>
                 <p className="text-[13px] text-[var(--ink-soft)] leading-relaxed font-medium mb-5">
-                  "{t.text}"
+                  "{item.text}"
                 </p>
                 <div className="flex items-center gap-3 pt-4 border-t border-[var(--border)]">
                   <div className="w-11 h-11 rounded-full bg-gradient-to-tr from-pink-400 to-rose-300 flex items-center justify-center text-lg shadow-md border-2 border-white">
                     <HeartHandshake className="w-5 h-5 text-white" aria-hidden="true" />
                   </div>
                   <div>
-                    <h4 className="font-display text-sm font-extrabold text-[var(--ink)]">{t.name}</h4>
+                    <h4 className="font-display text-sm font-extrabold text-[var(--ink)]">{item.name}</h4>
                     <span className="text-[10px] font-bold text-[var(--primary)] flex items-center gap-1">
                       <BadgeCheck className="w-3 h-3" aria-hidden="true" /> {t('landing_verified_couple')}
                     </span>
