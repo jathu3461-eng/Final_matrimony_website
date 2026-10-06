@@ -399,7 +399,6 @@ export default function Signup() {
           </motion.div>
         </form>
       </motion.div>
-      </motion.div>
 
       {/* Agreement Modal Overlay */}
       <AnimatePresence>
