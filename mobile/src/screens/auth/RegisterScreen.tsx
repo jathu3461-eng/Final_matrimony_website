@@ -379,8 +379,6 @@ export function RegisterScreen() {
             </View>
           </View>
       </KeyboardAwareScrollView>
-
-      </KeyboardAwareScrollView>
     </Screen>
   );
 }
