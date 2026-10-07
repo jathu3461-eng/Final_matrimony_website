@@ -169,8 +169,10 @@ router.post('/profiles/:id/unverify', async (req, res) => {
 router.get('/intro-videos/pending', async (req, res) => {
   try {
     const profiles = await db.all(`
-      SELECT p.id, p.name, p.intro_video_status, p.intro_video_duration, p.created_at,
-             u.username, u.email
+          SELECT p.id, p.name, p.gender, p.date_of_birth, p.city_or_state,
+            p.intro_video_status, p.intro_video_duration, p.intro_video_original_name,
+            p.intro_video_size_bytes, p.intro_video_mime_type, p.intro_video_uploaded_at,
+            p.owner_user_id, u.username, u.email
       FROM profiles p
       JOIN users u ON u.id = p.owner_user_id
       WHERE p.intro_video_key IS NOT NULL

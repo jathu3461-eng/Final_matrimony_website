@@ -3,6 +3,7 @@ import { Camera, Upload, X, Play, RefreshCcw, Check, Loader2 } from 'lucide-reac
 import Button from './Button';
 import api from '../../api';
 
+const MIN_INTRO_VIDEO_SIZE = 1 * 1024 * 1024;
 const MAX_INTRO_VIDEO_SIZE = 3 * 1024 * 1024 * 1024;
 const VIDEO_EXTENSIONS = new Set([
   '.3g2', '.3gp', '.asf', '.avi', '.divx', '.f4v', '.flv', '.m2t', '.m2ts', '.m2v', '.m4v',
@@ -10,7 +11,39 @@ const VIDEO_EXTENSIONS = new Set([
   '.webm', '.wmv', '.xvid',
 ]);
 
-const isVideoFile = (file) => file.type.startsWith('video/') || VIDEO_EXTENSIONS.has(`.${file.name.split('.').pop().toLowerCase()}`);
+const isVideoFile = (file) => VIDEO_EXTENSIONS.has(`.${file.name.split('.').pop().toLowerCase()}`)
+  && !/^(text\/|image\/|application\/(x-msdownload|x-executable|x-sh|x-bat|javascript|x-javascript|x-httpd-php))/i.test(file.type);
+
+function getVideoSignatureFormat(header) {
+  const ascii = (start, end) => String.fromCharCode(...header.slice(start, end));
+  if (header.length >= 12 && ascii(4, 8) === 'ftyp') return 'isobmff';
+  if (header.length >= 12 && ascii(0, 4) === 'RIFF' && ascii(8, 12) === 'AVI ') return 'avi';
+  if (header.length >= 4 && header[0] === 0x1a && header[1] === 0x45 && header[2] === 0xdf && header[3] === 0xa3) {
+    const marker = ascii(0, header.length).toLowerCase();
+    return marker.includes('webm') ? 'webm' : marker.includes('matroska') ? 'matroska' : 'ebml';
+  }
+  if (header.length >= 3 && ascii(0, 3) === 'FLV') return 'flv';
+  if (header.length >= 16 && Array.from(header.slice(0, 16)).map((byte) => byte.toString(16).padStart(2, '0')).join('') === '3026b2758e66cf11a6d900aa0062ce6c') return 'asf';
+  if (header.length >= 4 && header[0] === 0 && header[1] === 0 && header[2] === 1 && [0xb3, 0xba, 0xb8].includes(header[3])) return 'mpeg';
+  return null;
+}
+
+function isSignatureCompatible(extension, format) {
+  if (format === 'isobmff') return ['.mp4', '.mov', '.m4v', '.3gp', '.3g2'].includes(extension);
+  if (format === 'avi') return ['.avi', '.divx', '.xvid'].includes(extension);
+  if (format === 'matroska' || format === 'ebml') return ['.mkv', '.webm'].includes(extension);
+  if (format === 'webm') return extension === '.webm';
+  if (format === 'flv') return extension === '.flv';
+  if (format === 'asf') return ['.asf', '.wmv'].includes(extension);
+  if (format === 'mpeg') return ['.mpeg', '.mpg', '.mpe', '.m2v', '.vob', '.mod'].includes(extension);
+  return false;
+}
+
+function formatBytes(bytes) {
+  if (bytes >= 1024 ** 3) return `${(bytes / 1024 ** 3).toFixed(1)} GB`;
+  if (bytes >= 1024 ** 2) return `${(bytes / 1024 ** 2).toFixed(1)} MB`;
+  return `${(bytes / 1024).toFixed(0)} KB`;
+}
 
 export default function IntroVideoStep({ 
   hasExisting, 
@@ -29,6 +62,9 @@ export default function IntroVideoStep({
   
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadBytes, setUploadBytes] = useState(0);
+  const [uploadId, setUploadId] = useState(null);
+  const [selectedFile, setSelectedFile] = useState(null);
   const [uploadError, setUploadError] = useState('');
   const [tempKey, setTempKey] = useState(null);
 
@@ -127,44 +163,108 @@ export default function IntroVideoStep({
   };
 
   const uploadVideoFile = async (file, durationVal) => {
+    if (file.size < MIN_INTRO_VIDEO_SIZE) {
+      setUploadError('Video must be at least 1 MB.');
+      return;
+    }
+    if (file.size > MAX_INTRO_VIDEO_SIZE) {
+      setUploadError('Video size must not exceed 3 GB.');
+      return;
+    }
     setUploading(true);
     setUploadProgress(0);
+    setUploadBytes(0);
     setUploadError('');
     setTempKey(null);
+    let currentUploadId = uploadId;
     
     try {
-      const CHUNK_SIZE = 512 * 1024; // 512 KB (small enough to bypass strict cPanel limits)
+      const CHUNK_SIZE = 512 * 1024;
       const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
-      const uploadId = Date.now().toString();
       const fileName = file.name || 'video.mp4';
-      
-      let finalKey = null;
+      const mimeType = file.type || '';
+      if (!currentUploadId) {
+        currentUploadId = window.crypto.randomUUID();
+        setUploadId(currentUploadId);
+      }
+      const metadata = { uploadId: currentUploadId, totalChunks, fileName, fileSize: file.size, mimeType };
+      let receivedChunks = new Set();
+      try {
+        const status = await api.get(`/profiles/upload-status/${currentUploadId}`, { params: metadata });
+        if (status.data.completedKey) {
+          setTempKey(status.data.completedKey);
+          setUploadId(null);
+          setUploadProgress(100);
+          setUploadBytes(file.size);
+          setUploading(false);
+          onVideoSelected(null, durationVal, status.data.completedKey);
+          return;
+        }
+        receivedChunks = new Set(status.data.receivedChunks);
+      } catch (err) {
+        if (err.response?.status !== 404) throw err;
+        currentUploadId = window.crypto.randomUUID();
+        setUploadId(currentUploadId);
+        metadata.uploadId = currentUploadId;
+      }
+
+      let uploadedBytes = Array.from(receivedChunks).reduce((sum, index) => sum + Math.min(CHUNK_SIZE, file.size - index * CHUNK_SIZE), 0);
+      const reportProgress = () => {
+        setUploadBytes(uploadedBytes);
+        setUploadProgress(Math.min(100, Math.floor((uploadedBytes / file.size) * 100)));
+      };
+      reportProgress();
 
       for (let i = 0; i < totalChunks; i++) {
+        if (receivedChunks.has(i)) continue;
         const start = i * CHUNK_SIZE;
         const end = Math.min(start + CHUNK_SIZE, file.size);
         const chunk = file.slice(start, end);
-        
-        const fd = new FormData();
-        fd.append('chunk', chunk, fileName);
-        
-        const response = await api.post(`/profiles/upload-chunk?uploadId=${uploadId}&chunkIndex=${i}&totalChunks=${totalChunks}&fileName=${encodeURIComponent(fileName)}`, fd);
-        
-        setUploadProgress(Math.round(((i + 1) / totalChunks) * 100));
-        
-        if (i === totalChunks - 1) {
-          finalKey = response.data.temp_video_key;
+        let chunkUploaded = false;
+        for (let attempt = 0; attempt < 3 && !chunkUploaded; attempt++) {
+          const fd = new FormData();
+          fd.append('chunk', chunk, fileName);
+          try {
+            await api.post('/profiles/upload-chunk', fd, {
+              params: { ...metadata, chunkIndex: i },
+              timeout: 120000,
+              onUploadProgress: (event) => {
+                const inFlight = Math.min(end - start, event.loaded);
+                setUploadProgress(Math.min(100, Math.floor(((uploadedBytes + inFlight) / file.size) * 100)));
+              },
+            });
+            uploadedBytes += end - start;
+            chunkUploaded = true;
+            reportProgress();
+          } catch (err) {
+            const status = err.response?.status;
+            const retryable = !status || status === 408 || status === 429 || status >= 500;
+            if (!retryable || attempt === 2) throw err;
+            await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
+          }
         }
       }
-      
-      setTempKey(finalKey);
+
+      const response = await api.post('/profiles/upload-complete', metadata, { timeout: 30 * 60 * 1000 });
+      setTempKey(response.data.temp_video_key);
+      setUploadId(null);
       setUploading(false);
-      onVideoSelected(null, durationVal, finalKey);
+      onVideoSelected(null, durationVal, response.data.temp_video_key);
     } catch (err) {
       console.error(err);
+      const status = err.response?.status;
+      const code = err.response?.data?.code;
+      const resumable = !status || status === 408 || status === 429 || status >= 500 || code === 'VIDEO_CHUNK_MISSING' || code === 'VIDEO_SIZE_MISMATCH';
+      if (!resumable && currentUploadId) {
+        await api.delete(`/profiles/upload-chunks/${currentUploadId}`).catch(() => {});
+        setUploadId(null);
+      }
       const backendError = err.response?.data?.error;
-      const genericMsg = err.message === 'Network Error' ? 'Network Error: The file chunk might be too large or blocked by server security.' : `Failed: ${err.message}`;
-      setUploadError(backendError ? `Upload Error: ${backendError}` : genericMsg);
+      setUploadError(backendError || (status === 401
+        ? 'Your session has expired. Please log in again.'
+        : !status
+          ? 'Upload interrupted. Check your connection and retry.'
+          : 'Unable to upload the video right now. Please try again.'));
       setUploading(false);
       onVideoSelected(null, 0, null);
     }
@@ -176,29 +276,57 @@ export default function IntroVideoStep({
       const url = URL.createObjectURL(blob);
       setPreviewUrl(url);
       const file = new File([blob], 'intro-video.webm', { type: 'video/webm' });
+      setSelectedFile(file);
       uploadVideoFile(file, duration);
     }
   }, [mode, recordedChunks]);
 
-  const handleFileChange = (e) => {
+  const handleFileChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    if (file.size <= 0) { alert('The selected video file is empty.'); return; }
-    if (file.size > MAX_INTRO_VIDEO_SIZE) { alert('Video file is too large (max 3GB).'); return; }
-    if (!isVideoFile(file)) { alert('Please choose a video file.'); return; }
+    if (file.size < MIN_INTRO_VIDEO_SIZE) { alert('Video must be at least 1 MB.'); return; }
+    if (file.size > MAX_INTRO_VIDEO_SIZE) { alert('Video size must not exceed 3 GB.'); return; }
+    if (!isVideoFile(file)) { alert('This video format is not supported.'); return; }
+    setSelectedFile(file);
+    const signature = new Uint8Array(await file.slice(0, 4096).arrayBuffer());
+    const extension = `.${file.name.split('.').pop().toLowerCase()}`;
+    if (!isSignatureCompatible(extension, getVideoSignatureFormat(signature))) {
+      alert('This video format is not supported.');
+      return;
+    }
+
     const url = URL.createObjectURL(file);
+    setPreviewUrl(url);
+    setMode('preview');
+    setDuration(0);
+    let uploadStarted = false;
+    const startUpload = (durationSeconds) => {
+      if (uploadStarted) return;
+      uploadStarted = true;
+      clearTimeout(uploadFallback);
+      setDuration(durationSeconds);
+      uploadVideoFile(file, durationSeconds);
+    };
+    const uploadFallback = setTimeout(() => startUpload(0), 3000);
     const tempVideo = document.createElement('video');
     tempVideo.preload = 'metadata';
     tempVideo.onloadedmetadata = () => {
-      URL.revokeObjectURL(url);
-      const vidDuration = Math.round(tempVideo.duration);
-      if (vidDuration < 60) { alert('Your introduction video must be at least 1 minute long.'); return; }
-      if (vidDuration > 120) { alert('Your introduction video must not exceed 2 minutes.'); return; }
-      setPreviewUrl(URL.createObjectURL(file));
-      setDuration(vidDuration);
-      setMode('preview');
-      uploadVideoFile(file, vidDuration);
+      const videoDuration = Math.round(tempVideo.duration);
+      if (videoDuration < 60) {
+        uploadStarted = true;
+        clearTimeout(uploadFallback);
+        setUploadError('Your introduction video must be at least 1 minute long.');
+        return;
+      }
+      if (videoDuration > 120) {
+        uploadStarted = true;
+        clearTimeout(uploadFallback);
+        setUploadError('Your introduction video must not exceed 2 minutes.');
+        return;
+      }
+      startUpload(videoDuration);
     };
+    tempVideo.onerror = () => startUpload(0);
     tempVideo.src = url;
   };
 
@@ -209,6 +337,7 @@ export default function IntroVideoStep({
   };
 
   const cancelAndReset = () => {
+    if (uploadId) api.delete(`/profiles/upload-chunks/${uploadId}`).catch(() => {});
     stopCamera();
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl(null);
@@ -217,7 +346,10 @@ export default function IntroVideoStep({
     setDuration(0);
     setTempKey(null);
     setUploadProgress(0);
+    setUploadBytes(0);
     setUploading(false);
+    setUploadId(null);
+    setSelectedFile(null);
     setUploadError('');
     onVideoSelected(null, 0, null);
   };
@@ -320,7 +452,7 @@ export default function IntroVideoStep({
                   <Upload className="w-4 h-4" /> Upload Video Instead
                   <input
                     type="file"
-                    accept="video/*"
+                    accept="video/*,.3gp,.m4v,.avi,.mkv,.webm,.wmv,.flv,.mpeg,.mpg,.mov,.mp4"
                     className="hidden"
                     onChange={(e) => { setCameraError(null); handleFileChange(e); }}
                   />
@@ -348,8 +480,8 @@ export default function IntroVideoStep({
               <label className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-[var(--primary)] bg-[var(--primary-soft)] rounded-xl cursor-pointer hover:bg-[var(--primary)] hover:bg-opacity-10 transition-colors">
                 <Upload className="w-8 h-8 text-[var(--primary-strong)] mb-2" />
                 <span className="font-bold text-[var(--primary-strong)]">Choose from device</span>
-                <span className="text-[11px] text-[var(--primary-strong)] opacity-80 mt-1">Any video format, up to 3GB</span>
-                <input type="file" accept="video/*" className="hidden" onChange={handleFileChange} />
+                <span className="text-[11px] text-[var(--primary-strong)] opacity-80 mt-1">Supported video formats, 1 MB–3 GB</span>
+                <input type="file" accept="video/*,.3gp,.m4v,.avi,.mkv,.webm,.wmv,.flv,.mpeg,.mpg,.mov,.mp4" className="hidden" onChange={handleFileChange} />
               </label>
 
               <button
@@ -412,6 +544,7 @@ export default function IntroVideoStep({
                     />
                   </div>
                   <p className="text-[var(--primary)] font-bold mt-2 text-lg">{uploadProgress}%</p>
+                  <p className="text-white text-xs mt-1">{formatBytes(uploadBytes)} / {formatBytes(selectedFile?.size || 0)}</p>
                 </div>
               )}
             </div>
@@ -438,6 +571,12 @@ export default function IntroVideoStep({
               <div className="mt-2 mb-4 p-3 w-full max-w-lg bg-red-50 text-red-600 text-sm font-semibold rounded-lg border border-red-200 text-center">
                 {uploadError}
               </div>
+            )}
+
+            {uploadError && selectedFile && !uploading && (
+              <Button type="button" onClick={() => uploadVideoFile(selectedFile, duration)} variant="primary">
+                Retry upload
+              </Button>
             )}
             
             <div className="flex gap-4">

@@ -1,53 +1,202 @@
 import api from './client';
+import { File } from 'expo-file-system';
 import type { Profile, ProfileMeta } from '@/types';
 
 const VIDEO_CHUNK_SIZE = 512 * 1024;
+const MIN_INTRO_VIDEO_SIZE = 1 * 1024 * 1024;
 const MAX_INTRO_VIDEO_SIZE = 3 * 1024 * 1024 * 1024;
+const VIDEO_EXTENSIONS = new Set([
+  '.3g2', '.3gp', '.asf', '.avi', '.divx', '.f4v', '.flv', '.m2t', '.m2ts', '.m2v', '.m4v',
+  '.mkv', '.mod', '.mov', '.mp4', '.mpe', '.mpeg', '.mpg', '.mts', '.ogv', '.ts', '.vob',
+  '.webm', '.wmv', '.xvid',
+]);
+const activeVideoUploads = new Map<string, string>();
 
-async function uploadIntroVideoTempBase64(
+type UploadProgress = (percent: number, uploadedBytes: number, totalBytes: number) => void;
+
+function getVideoSignatureFormat(header: Uint8Array): string | null {
+  const ascii = (start: number, end: number) => String.fromCharCode(...header.slice(start, end));
+  if (header.length >= 12 && ascii(4, 8) === 'ftyp') return 'isobmff';
+  if (header.length >= 12 && ascii(0, 4) === 'RIFF' && ascii(8, 12) === 'AVI ') return 'avi';
+  if (header.length >= 4 && header[0] === 0x1a && header[1] === 0x45 && header[2] === 0xdf && header[3] === 0xa3) {
+    const marker = ascii(0, header.length).toLowerCase();
+    return marker.includes('webm') ? 'webm' : marker.includes('matroska') ? 'matroska' : 'ebml';
+  }
+  if (header.length >= 3 && ascii(0, 3) === 'FLV') return 'flv';
+  if (header.length >= 16 && Array.from(header.slice(0, 16)).map((byte) => byte.toString(16).padStart(2, '0')).join('') === '3026b2758e66cf11a6d900aa0062ce6c') return 'asf';
+  if (header.length >= 4 && header[0] === 0 && header[1] === 0 && header[2] === 1 && [0xb3, 0xba, 0xb8].includes(header[3])) return 'mpeg';
+  return null;
+}
+
+function isSignatureCompatible(extension: string, format: string | null) {
+  if (format === 'isobmff') return ['.mp4', '.mov', '.m4v', '.3gp', '.3g2'].includes(extension);
+  if (format === 'avi') return ['.avi', '.divx', '.xvid'].includes(extension);
+  if (format === 'matroska' || format === 'ebml') return ['.mkv', '.webm'].includes(extension);
+  if (format === 'webm') return extension === '.webm';
+  if (format === 'flv') return extension === '.flv';
+  if (format === 'asf') return ['.asf', '.wmv'].includes(extension);
+  if (format === 'mpeg') return ['.mpeg', '.mpg', '.mpe', '.m2v', '.vob', '.mod'].includes(extension);
+  return false;
+}
+
+function validateIntroVideo(name: string, mimeType: string, size: number, signature: Uint8Array) {
+  if (size < MIN_INTRO_VIDEO_SIZE) throw new Error('Video must be at least 1 MB.');
+  if (size > MAX_INTRO_VIDEO_SIZE) throw new Error('Video size must not exceed 3 GB.');
+  const extension = name.slice(name.lastIndexOf('.')).toLowerCase();
+  if (!VIDEO_EXTENSIONS.has(extension)) throw new Error('This video format is not supported.');
+  if (/^(text\/|image\/|application\/(x-msdownload|x-executable|x-sh|x-bat|javascript|x-javascript|x-httpd-php))/i.test(mimeType)) {
+    throw new Error('This video format is not supported.');
+  }
+  if (!isSignatureCompatible(extension, getVideoSignatureFormat(signature))) {
+    throw new Error('This video format is not supported.');
+  }
+}
+
+function videoUploadError(error: any): Error {
+  const status = error?.response?.status;
+  const responseMessage = error?.response?.data?.error || error?.response?.data?.message;
+  if (status === 401) return new Error('Your session has expired. Please log in again.');
+  if (responseMessage) return new Error(String(responseMessage));
+  if (status >= 500) return new Error('Unable to upload the video right now. Please try again.');
+  if (error?.code === 'ERR_NETWORK' || error?.code === 'ECONNABORTED' || !error?.response) {
+    return new Error('Upload interrupted. Check your connection and try again.');
+  }
+  return new Error(error?.message || 'Unable to upload the video right now. Please try again.');
+}
+
+function wait(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function uploadIntroVideoTempFile(
   fileUri: string,
   fileName: string,
-  onProgress?: (p: number) => void,
+  onProgress?: UploadProgress,
   mimeType?: string | null,
 ): Promise<string> {
-  const FileSystem = require('expo-file-system');
-  const fileInfo = await FileSystem.getInfoAsync(fileUri);
-  if (!fileInfo.exists) throw new Error('Video file does not exist');
-  if (!fileInfo.size || fileInfo.size <= 0) throw new Error('Could not read video size');
-  if (fileInfo.size > MAX_INTRO_VIDEO_SIZE) throw new Error('Video file is too large (max 3GB)');
+  const sourceFile = new File(fileUri);
+  if (!sourceFile.exists) throw new Error('The selected video cannot be read. Please select it again.');
+  const fileSize = sourceFile.size;
+  const safeName = fileName || sourceFile.name;
+  const resolvedMimeType = mimeType || sourceFile.type || '';
+  if (fileSize < MIN_INTRO_VIDEO_SIZE) throw new Error('Video must be at least 1 MB.');
+  if (fileSize > MAX_INTRO_VIDEO_SIZE) throw new Error('Video size must not exceed 3 GB.');
+  const signature = new Uint8Array(await sourceFile.slice(0, 4096).arrayBuffer());
+  validateIntroVideo(safeName, resolvedMimeType, fileSize, signature);
 
-  const totalChunks = Math.ceil(fileInfo.size / VIDEO_CHUNK_SIZE);
-  const uploadId = Date.now().toString();
-  let tempKey: string | null = null;
-
-  for (let i = 0; i < totalChunks; i += 1) {
-    const position = i * VIDEO_CHUNK_SIZE;
-    const length = Math.min(VIDEO_CHUNK_SIZE, fileInfo.size - position);
-
-    const base64 = await FileSystem.readAsStringAsync(fileUri, {
-      encoding: FileSystem.EncodingType.Base64,
-      position,
-      length,
+  const totalChunks = Math.ceil(fileSize / VIDEO_CHUNK_SIZE);
+  const fingerprint = `${fileUri}|${safeName}|${fileSize}`;
+  let uploadId = activeVideoUploads.get(fingerprint);
+  if (!uploadId) {
+    uploadId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 14)}`;
+    activeVideoUploads.set(fingerprint, uploadId);
+  }
+  const metadataParams = { uploadId, totalChunks, fileName: safeName, fileSize, mimeType: resolvedMimeType };
+  let receivedChunks = new Set<number>();
+  try {
+    const { data } = await api.get<{ receivedChunks: number[]; completedKey?: string }>(`/profiles/upload-status/${uploadId}`, {
+      params: metadataParams,
+      timeout: 20000,
     });
-
-    const { data } = await api.post('/profiles/upload-chunk-base64', {
-      uploadId,
-      chunkIndex: i,
-      totalChunks,
-      fileName,
-      mimeType,
-      chunkBase64: base64,
-    });
-
-    onProgress?.(Math.round(((i + 1) / totalChunks) * 100));
-
-    if (i === totalChunks - 1) {
-      tempKey = data.temp_video_key;
+    if (data.completedKey) {
+      activeVideoUploads.delete(fingerprint);
+      onProgress?.(100, fileSize, fileSize);
+      return data.completedKey;
     }
+    receivedChunks = new Set(data.receivedChunks);
+  } catch (error: any) {
+    if (error?.response?.status !== 404) throw videoUploadError(error);
+    activeVideoUploads.delete(fingerprint);
+    uploadId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 14)}`;
+    activeVideoUploads.set(fingerprint, uploadId);
+    metadataParams.uploadId = uploadId;
   }
 
-  if (!tempKey) throw new Error('Failed to get temp video key');
-  return tempKey;
+  let settledBytes = Array.from(receivedChunks).reduce((total, index) => {
+    return total + Math.min(VIDEO_CHUNK_SIZE, fileSize - index * VIDEO_CHUNK_SIZE);
+  }, 0);
+  const activeChunkBytes = new Map<number, number>();
+  const reportProgress = () => {
+    const activeBytes = Array.from(activeChunkBytes.values()).reduce((total, value) => total + value, 0);
+    const uploadedBytes = Math.min(fileSize, settledBytes + activeBytes);
+    onProgress?.(Math.min(100, Math.floor((uploadedBytes / fileSize) * 100)), uploadedBytes, fileSize);
+  };
+
+  const uploadChunk = async (chunkIndex: number) => {
+    if (receivedChunks.has(chunkIndex)) return;
+    const start = chunkIndex * VIDEO_CHUNK_SIZE;
+    const chunkBytes = Math.min(VIDEO_CHUNK_SIZE, fileSize - start);
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const formData = new FormData();
+      formData.append('chunk', sourceFile.slice(start, start + chunkBytes, resolvedMimeType), safeName);
+      try {
+        await api.post('/profiles/upload-chunk', formData, {
+          params: {
+            uploadId,
+            chunkIndex,
+            totalChunks,
+            fileName: safeName,
+            fileSize,
+            mimeType: resolvedMimeType,
+          },
+          headers: { 'Content-Type': 'multipart/form-data' },
+          timeout: 120000,
+          maxBodyLength: VIDEO_CHUNK_SIZE + 64 * 1024,
+          onUploadProgress: (event) => {
+            activeChunkBytes.set(chunkIndex, Math.min(chunkBytes, event.loaded));
+            reportProgress();
+          },
+        });
+        activeChunkBytes.delete(chunkIndex);
+        settledBytes += chunkBytes;
+        reportProgress();
+        return;
+      } catch (error: any) {
+        activeChunkBytes.delete(chunkIndex);
+        reportProgress();
+        const status = error?.response?.status;
+        const retryable = !status || status === 408 || status === 429 || status >= 500;
+        if (!retryable || attempt === 2) throw videoUploadError(error);
+        await wait(500 * (attempt + 1));
+      }
+    }
+  };
+
+  let nextChunk = 0;
+  const workers = Array.from({ length: Math.min(3, totalChunks) }, async () => {
+    while (nextChunk < totalChunks) {
+      const index = nextChunk;
+      nextChunk += 1;
+      await uploadChunk(index);
+    }
+  });
+
+  try {
+    const results = await Promise.allSettled(workers);
+    const failedWorker = results.find((result) => result.status === 'rejected');
+    if (failedWorker?.status === 'rejected') throw failedWorker.reason;
+    const { data } = await api.post<{ temp_video_key: string }>('/profiles/upload-complete', {
+      uploadId,
+      totalChunks,
+      fileName: safeName,
+      fileSize,
+      mimeType: resolvedMimeType,
+    }, { timeout: 30 * 60 * 1000 });
+    reportProgress();
+    activeVideoUploads.delete(fingerprint);
+    return data.temp_video_key;
+  } catch (error) {
+    const status = (error as any)?.response?.status;
+    const code = (error as any)?.response?.data?.code;
+    const canResume = !status || status === 408 || status === 429 || status >= 500 || code === 'VIDEO_CHUNK_MISSING' || code === 'VIDEO_SIZE_MISMATCH';
+    if (!canResume) {
+      await api.delete(`/profiles/upload-chunks/${uploadId}`, { timeout: 20000 }).catch(() => {});
+      activeVideoUploads.delete(fingerprint);
+    }
+    throw error instanceof Error && !('response' in error)
+      ? error
+      : videoUploadError(error);
+  }
 }
 
 export interface SearchParams {
@@ -113,25 +262,30 @@ export const profileApi = {
     });
   },
 
-  async uploadIntroVideoTempBase64(
+  async uploadIntroVideoTemp(
     fileUri: string,
     fileName: string,
-    onProgress?: (p: number) => void,
     mimeType?: string | null,
+    onProgress?: UploadProgress,
   ): Promise<string> {
-    return uploadIntroVideoTempBase64(fileUri, fileName, onProgress, mimeType);
+    return uploadIntroVideoTempFile(fileUri, fileName, onProgress, mimeType);
   },
 
   async linkIntroVideo(id: number | string, tempVideoKey: string, durationSecs: number): Promise<void> {
-    await api.post(`/profiles/${id}/intro-video`, {
-      temp_video_key: tempVideoKey,
-      duration_seconds: durationSecs,
-    });
-  },
-
-  async uploadIntroVideoChunkedBase64(id: number | string, fileUri: string, fileName: string, durationSecs: number, onProgress?: (p: number) => void): Promise<void> {
-    const tempKey = await uploadIntroVideoTempBase64(fileUri, fileName, onProgress);
-    await this.linkIntroVideo(id, tempKey, durationSecs);
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        await api.post(`/profiles/${id}/intro-video`, {
+          temp_video_key: tempVideoKey,
+          duration_seconds: durationSecs,
+        }, { timeout: 30000 });
+        return;
+      } catch (error: any) {
+        const status = error?.response?.status;
+        const retryable = !status || status === 408 || status === 429 || status >= 500;
+        if (!retryable || attempt === 2) throw videoUploadError(error);
+        await wait(500 * (attempt + 1));
+      }
+    }
   },
 
   async match(profileId1: number, profileId2: number) {

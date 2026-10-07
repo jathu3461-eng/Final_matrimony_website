@@ -305,6 +305,10 @@ async function initDB() {
     await ensureColumn('profiles', 'intro_video_key', 'intro_video_key TEXT');
     await ensureColumn('profiles', 'intro_video_status', "intro_video_status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending'");
     await ensureColumn('profiles', 'intro_video_duration', 'intro_video_duration INT');
+    await ensureColumn('profiles', 'intro_video_original_name', 'intro_video_original_name VARCHAR(255) NULL');
+    await ensureColumn('profiles', 'intro_video_size_bytes', 'intro_video_size_bytes BIGINT UNSIGNED NULL');
+    await ensureColumn('profiles', 'intro_video_mime_type', 'intro_video_mime_type VARCHAR(128) NULL');
+    await ensureColumn('profiles', 'intro_video_uploaded_at', 'intro_video_uploaded_at DATETIME NULL');
 
     // ─── Ensure all tables use utf8mb4 (fixes latin1 → Tamil stored as '?') ────
     async function ensureCharset(table) {

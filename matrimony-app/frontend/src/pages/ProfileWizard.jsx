@@ -148,6 +148,7 @@ export default function ProfileWizard() {
   const [meta, setMeta] = useState(null);
   const [loadingProfile, setLoadingProfile] = useState(isEdit);
   const [checkingExisting, setCheckingExisting] = useState(!isEdit);
+  const [createdProfileId, setCreatedProfileId] = useState(null);
   const { user } = useAuth();
   const [step, setStep] = useState(0);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -330,13 +331,14 @@ export default function ProfileWizard() {
       if (photoFile) fd.append('main_profile_picture', photoFile);
       if (horoscopeFile) fd.append('horoscope_chart', horoscopeFile);
       
-      let profileId = id;
+      let profileId = id || createdProfileId;
       if (isEdit) {
         await api.put(`/profiles/${id}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
         toast.success('Profile updated successfully');
-      } else {
+      } else if (!profileId) {
         const res = await api.post('/profiles', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
         profileId = res.data.profile.id;
+        setCreatedProfileId(profileId);
         clearDraft();
         toast.success('Profile created — uploading video...');
       }
@@ -347,9 +349,20 @@ export default function ProfileWizard() {
         videoFd.append('temp_video_key', tempVideoKey);
         videoFd.append('duration_seconds', String(introVideoDuration));
         try {
-          await api.post(`/profiles/${profileId}/intro-video`, videoFd, {
-            headers: { 'Content-Type': 'multipart/form-data' },
-          });
+          for (let attempt = 0; attempt < 3; attempt += 1) {
+            try {
+              await api.post(`/profiles/${profileId}/intro-video`, videoFd, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+                timeout: 30000,
+              });
+              break;
+            } catch (error) {
+              const status = error.response?.status;
+              const retryable = !status || status === 408 || status === 429 || status >= 500;
+              if (!retryable || attempt === 2) throw error;
+              await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
+            }
+          }
           toast.success('Introduction video saved successfully!');
         } catch (videoErr) {
           console.error('Video link failed:', videoErr.response?.data || videoErr.message);

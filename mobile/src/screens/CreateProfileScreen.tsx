@@ -4,11 +4,11 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as ImagePicker from 'expo-image-picker';
@@ -60,7 +60,8 @@ export function CreateProfileScreen() {
   const [introVideoUri, setIntroVideoUri] = useState<string | null>(null);
   const [introVideoDuration, setIntroVideoDuration] = useState<number>(0);
   const [introVideoTempKey, setIntroVideoTempKey] = useState<string | null>(null);
-  const scrollRef = useRef<ScrollView>(null);
+  const [createdProfileId, setCreatedProfileId] = useState<number | null>(null);
+  const scrollRef = useRef<KeyboardAwareScrollView>(null);
 
   useEffect(() => {
     profileApi.getMeta().then(setMeta).catch(() => {});
@@ -109,28 +110,28 @@ export function CreateProfileScreen() {
     markStepTouched();
     const errs = validateProfileStep(step, form);
     if (Object.keys(errs).length > 0) {
-      scrollRef.current?.scrollTo({ y: 0, animated: true });
+      scrollRef.current?.scrollToPosition(0, 0, true);
       return;
     }
     setStep((s) => Math.min(s + 1, profileSteps.length - 1));
-    scrollRef.current?.scrollTo({ y: 0, animated: true });
+    scrollRef.current?.scrollToPosition(0, 0, true);
   }, [step, form, markStepTouched]);
 
   const goBack = useCallback(() => {
     setStep((s) => Math.max(s - 1, 0));
-    scrollRef.current?.scrollTo({ y: 0, animated: true });
+    scrollRef.current?.scrollToPosition(0, 0, true);
   }, []);
 
   const goToStep = useCallback(
     (i: number) => {
       if (i < step) {
         setStep(i);
-        scrollRef.current?.scrollTo({ y: 0, animated: true });
+        scrollRef.current?.scrollToPosition(0, 0, true);
         return;
       }
       if (i <= maxReachable) {
         setStep(i);
-        scrollRef.current?.scrollTo({ y: 0, animated: true });
+        scrollRef.current?.scrollToPosition(0, 0, true);
       }
     },
     [step, maxReachable],
@@ -166,7 +167,7 @@ export function CreateProfileScreen() {
       setStep(firstBad);
       const badFields = profileSteps[firstBad].fields;
       setTouched((t) => ({ ...t, ...Object.fromEntries(badFields.map((f) => [f, true])) }));
-      scrollRef.current?.scrollTo({ y: 0, animated: true });
+      scrollRef.current?.scrollToPosition(0, 0, true);
       return;
     }
 
@@ -191,10 +192,15 @@ export function CreateProfileScreen() {
           type: `image/${ext}`,
         } as unknown as Blob);
       }
-      const createdProfile = await profileApi.create(formData);
+      let profileId = createdProfileId;
+      if (!profileId) {
+        const createdProfile = await profileApi.create(formData);
+        profileId = createdProfile.id;
+        setCreatedProfileId(profileId);
+      }
 
       if (introVideoTempKey) {
-        await profileApi.linkIntroVideo(createdProfile.id, introVideoTempKey, introVideoDuration);
+        await profileApi.linkIntroVideo(profileId, introVideoTempKey, introVideoDuration);
       }
 
       Alert.alert('Profile created', 'Your profile is now live.', [
@@ -702,10 +708,14 @@ export function CreateProfileScreen() {
         </View>
 
         {/* Content */}
-        <ScrollView
+        <KeyboardAwareScrollView
           ref={scrollRef}
           style={styles.flex}
           contentContainerStyle={styles.content}
+          enableOnAndroid
+          enableAutomaticScroll
+          extraHeight={48}
+          extraScrollHeight={spacing.md}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
@@ -743,7 +753,7 @@ export function CreateProfileScreen() {
           )}
 
           {renderStep()}
-        </ScrollView>
+        </KeyboardAwareScrollView>
 
         {/* Navigation */}
         <View style={[styles.navBar, { borderTopColor: colors.border, backgroundColor: colors.surface }]}>

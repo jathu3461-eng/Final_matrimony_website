@@ -8,6 +8,19 @@ const jwt = require('jsonwebtoken');
 const { JWT_SECRET } = require('../middleware/auth');
 const { calculate10Porutham } = require('../utils/astrology');
 const { calculateLifestyleCompatibility } = require('../utils/compatibility');
+const {
+  MIN_INTRO_VIDEO_SIZE,
+  MAX_INTRO_VIDEO_SIZE,
+  VIDEO_CHUNK_SIZE,
+  VIDEO_MIME_BY_EXTENSION,
+  createUploadError,
+  getSafeVideoName,
+  validateVideoMetadata,
+  createUploadId,
+  assembleVideoChunks,
+  readVideoSignature,
+  cleanupExpiredVideoUploads,
+} = require('../utils/introVideoStorage');
 
 const router = express.Router();
 
@@ -65,16 +78,6 @@ const privateVideoDir = path.join(__dirname, '..', 'private_uploads', 'intro_vid
 const tempVideoDir = path.join(__dirname, '..', 'private_uploads', 'temp_videos');
 if (!fs.existsSync(privateVideoDir)) fs.mkdirSync(privateVideoDir, { recursive: true });
 if (!fs.existsSync(tempVideoDir)) fs.mkdirSync(tempVideoDir, { recursive: true });
-const MAX_INTRO_VIDEO_SIZE = 3 * 1024 * 1024 * 1024;
-const VIDEO_EXTENSIONS = new Set([
-  '.3g2', '.3gp', '.asf', '.avi', '.divx', '.f4v', '.flv', '.m2t', '.m2ts', '.m2v', '.m4v',
-  '.mkv', '.mod', '.mov', '.mp4', '.mpe', '.mpeg', '.mpg', '.mts', '.ogv', '.ts', '.vob',
-  '.webm', '.wmv', '.xvid',
-]);
-
-function isVideoFile(fileName, mimeType = '') {
-  return mimeType.startsWith('video/') || VIDEO_EXTENSIONS.has(path.extname(fileName).toLowerCase());
-}
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadDir),
@@ -121,10 +124,12 @@ const videoStorage = multer.diskStorage({
 });
 
 function videoFilter(req, file, cb) {
-  if (!isVideoFile(file.originalname, file.mimetype)) {
-    return cb(new Error('Invalid Format. Please choose a supported video file.'));
+  try {
+    getSafeVideoName(file.originalname);
+    cb(null, true);
+  } catch (error) {
+    cb(error);
   }
-  cb(null, true);
 }
 
 const uploadVideo = multer({ storage: videoStorage, fileFilter: videoFilter, limits: { fileSize: MAX_INTRO_VIDEO_SIZE } });
@@ -133,9 +138,13 @@ const uploadVideoMiddleware = (req, res, next) => {
   uploadVideo.single('intro_video')(req, res, (err) => {
     if (err) {
       if (err instanceof multer.MulterError) {
-        return res.status(400).json({ error: `Video upload error: ${err.message}` });
+        const tooLarge = err.code === 'LIMIT_FILE_SIZE';
+        return res.status(tooLarge ? 413 : 400).json({
+          error: tooLarge ? 'Video size must not exceed 3 GB.' : err.message,
+          code: tooLarge ? 'VIDEO_TOO_LARGE' : 'VIDEO_UPLOAD_ERROR',
+        });
       }
-      return res.status(400).json({ error: err.message });
+      return res.status(400).json({ error: err.message, code: 'VIDEO_FORMAT_UNSUPPORTED' });
     }
     next();
   });
@@ -402,147 +411,317 @@ router.delete('/:id', requireAuth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// POST /api/profiles/upload-chunk
-// Chunked upload for temp video using multipart to bypass WAF limits.
-const uploadChunk = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } }); // 10MB chunk max
+function videoUploadError(res, error, context) {
+  console.error(`[VideoUpload] ${context}:`, error);
+  const status = Number.isInteger(error.status) ? error.status : 500;
+  const message = status >= 500
+    ? 'Video storage failed. Please try again.'
+    : error.message;
+  return res.status(status).json({
+    error: message,
+    code: error.code || (status >= 500 ? 'VIDEO_STORAGE_FAILED' : 'VIDEO_UPLOAD_INVALID'),
+  });
+}
 
+function getVideoUploadMetadata(source) {
+  const uploadId = String(source.uploadId || '');
+  if (!/^[\w-]{16,80}$/.test(uploadId)) throw createUploadError('Invalid video upload ID.');
+  const { name: fileName, extension } = getSafeVideoName(source.fileName);
+  const fileSize = Number(source.fileSize);
+  if (!Number.isSafeInteger(fileSize) || fileSize < MIN_INTRO_VIDEO_SIZE) {
+    throw createUploadError('Video must be at least 1 MB.', 400, 'VIDEO_TOO_SMALL');
+  }
+  if (fileSize > MAX_INTRO_VIDEO_SIZE) {
+    throw createUploadError('Video size must not exceed 3 GB.', 413, 'VIDEO_TOO_LARGE');
+  }
+  const totalChunks = Number(source.totalChunks);
+  if (!Number.isInteger(totalChunks) || totalChunks !== Math.ceil(fileSize / VIDEO_CHUNK_SIZE)) {
+    throw createUploadError('Invalid video chunk metadata.');
+  }
+  return {
+    uploadId,
+    fileName,
+    extension,
+    fileSize,
+    mimeType: String(source.mimeType || '').split(';', 1)[0].trim().toLowerCase(),
+    totalChunks,
+  };
+}
+
+function getUserVideoUploadDirectory(userId, uploadId) {
+  return path.join(tempVideoDir, `${userId}-${uploadId}`);
+}
+
+async function writeVideoUploadManifest(uploadDirectory, metadata, userId) {
+  const manifest = { ...metadata, ownerUserId: userId };
+  const manifestPath = path.join(uploadDirectory, 'manifest.json');
+  try {
+    await fs.promises.writeFile(manifestPath, JSON.stringify(manifest), { flag: 'wx' });
+  } catch (error) {
+    if (error.code !== 'EEXIST') throw error;
+    const existing = JSON.parse(await fs.promises.readFile(manifestPath, 'utf8'));
+    if (JSON.stringify(existing) !== JSON.stringify(manifest)) {
+      throw createUploadError('Video upload metadata changed during upload.', 409, 'VIDEO_METADATA_MISMATCH');
+    }
+  }
+}
+
+const uploadChunk = multer({ storage: multer.memoryStorage(), limits: { fileSize: VIDEO_CHUNK_SIZE + 64 * 1024 } });
 const uploadChunkMiddleware = (req, res, next) => {
   uploadChunk.single('chunk')(req, res, (err) => {
     if (err) {
-      console.error('Multer chunk error:', err);
-      return res.status(400).json({ error: `Upload error: ${err.message}` });
+      const tooLarge = err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE';
+      return res.status(tooLarge ? 413 : 400).json({
+        error: tooLarge ? 'Video chunk exceeds the allowed chunk size.' : err.message,
+        code: tooLarge ? 'VIDEO_CHUNK_TOO_LARGE' : 'VIDEO_UPLOAD_ERROR',
+      });
     }
     next();
   });
 };
 
-router.post('/upload-chunk', requireAuth, uploadChunkMiddleware, async (req, res) => {
+router.get('/upload-status/:uploadId', requireAuth, async (req, res) => {
   try {
-    const { uploadId, chunkIndex, totalChunks, fileName } = req.query;
-    if (!uploadId || !chunkIndex || !totalChunks || !fileName) {
-      return res.status(400).json({ error: 'Missing chunk metadata' });
+    const metadata = getVideoUploadMetadata({ ...req.query, uploadId: req.params.uploadId });
+    const completedKey = `intro-${req.user.id}-${metadata.uploadId}${metadata.extension}`;
+    const completedPath = path.join(privateVideoDir, completedKey);
+    const completedMetadataPath = `${completedPath}.json`;
+    if (fs.existsSync(completedPath) && fs.existsSync(completedMetadataPath)) {
+      const completed = JSON.parse(await fs.promises.readFile(completedMetadataPath, 'utf8'));
+      if (completed.ownerUserId === req.user.id && completed.fileSize === metadata.fileSize) {
+        return res.json({
+          receivedChunks: Array.from({ length: metadata.totalChunks }, (_, index) => index),
+          completedKey,
+        });
+      }
+    }
+    const uploadDirectory = getUserVideoUploadDirectory(req.user.id, metadata.uploadId);
+    await fs.promises.mkdir(uploadDirectory, { recursive: true });
+    await writeVideoUploadManifest(uploadDirectory, metadata, req.user.id);
+    const manifest = JSON.parse(await fs.promises.readFile(path.join(uploadDirectory, 'manifest.json'), 'utf8'));
+    if (manifest.ownerUserId !== req.user.id || JSON.stringify(manifest) !== JSON.stringify({ ...metadata, ownerUserId: req.user.id })) {
+      throw createUploadError('Video upload metadata does not match.', 409, 'VIDEO_METADATA_MISMATCH');
     }
 
-    if (!req.file) {
-      return res.status(400).json({ error: 'No chunk file provided' });
+    const receivedChunks = [];
+    for (let index = 0; index < metadata.totalChunks; index += 1) {
+      const chunkPath = path.join(uploadDirectory, `${index}.part`);
+      const stats = await fs.promises.stat(chunkPath).catch(() => null);
+      const expectedSize = Math.min(VIDEO_CHUNK_SIZE, metadata.fileSize - index * VIDEO_CHUNK_SIZE);
+      if (stats?.size === expectedSize) receivedChunks.push(index);
     }
-
-    const safeUploadId = String(uploadId);
-    const safeFileName = path.basename(String(fileName));
-    const cIndex = Number.parseInt(String(chunkIndex), 10);
-    const tChunks = Number.parseInt(String(totalChunks), 10);
-    if (!/^[\w-]+$/.test(safeUploadId) || safeFileName !== String(fileName) || !isVideoFile(safeFileName, req.file.mimetype)) {
-      return res.status(400).json({ error: 'Invalid video upload metadata or format' });
-    }
-    if (!Number.isInteger(cIndex) || !Number.isInteger(tChunks) || tChunks < 1 || cIndex < 0 || cIndex >= tChunks) {
-      return res.status(400).json({ error: 'Invalid video chunk metadata' });
-    }
-
-    if (!fs.existsSync(tempVideoDir)) fs.mkdirSync(tempVideoDir, { recursive: true });
-
-    const tempFilePath = path.join(tempVideoDir, `${safeUploadId}_${safeFileName}`);
-    const chunkData = req.file.buffer; // Buffer from multer memoryStorage
-
-    const existingSize = fs.existsSync(tempFilePath) ? fs.statSync(tempFilePath).size : 0;
-    if (existingSize + chunkData.length > MAX_INTRO_VIDEO_SIZE) {
-      return res.status(413).json({ error: 'Video file is too large (max 3GB)' });
-    }
-
-    // Append chunk to file
-    fs.appendFileSync(tempFilePath, chunkData);
-
-    if (cIndex === tChunks - 1) {
-      // Final chunk received
-      const ext = path.extname(fileName).toLowerCase();
-      const finalFileName = `intro-${Date.now()}-${Math.round(Math.random() * 1E9)}${ext}`;
-      const finalPath = path.join(privateVideoDir, finalFileName);
-      
-      // Move from temp to private_uploads
-      fs.renameSync(tempFilePath, finalPath);
-      
-      return res.json({ ok: true, temp_video_key: finalFileName });
-    }
-
-    res.json({ ok: true, message: 'Chunk received' });
-  } catch (err) {
-    console.error('Chunk upload error:', err);
-    res.status(500).json({ error: err.message });
+    res.json({ receivedChunks });
+  } catch (error) {
+    if (error.code === 'ENOENT') return res.status(404).json({ error: 'No saved upload chunks.', code: 'UPLOAD_NOT_FOUND' });
+    videoUploadError(res, error, 'Video upload status failed');
   }
 });
 
-// POST /api/profiles/upload-chunk-base64
-// For mobile app which cannot easily send multipart sliced blobs
-router.post('/upload-chunk-base64', requireAuth, express.json({ limit: '5mb' }), async (req, res) => {
+router.post('/upload-chunk', requireAuth, uploadChunkMiddleware, async (req, res) => {
   try {
-    const { uploadId, chunkIndex, totalChunks, fileName, chunkBase64, mimeType } = req.body;
-    if (!uploadId || chunkIndex === undefined || !totalChunks || !fileName || !chunkBase64) {
-      return res.status(400).json({ error: 'Missing chunk parameters' });
+    if (!req.file) throw createUploadError('No video chunk was provided.');
+    const metadata = getVideoUploadMetadata(req.query);
+    const chunkIndex = Number(req.query.chunkIndex);
+    if (!Number.isInteger(chunkIndex) || chunkIndex < 0 || chunkIndex >= metadata.totalChunks) {
+      throw createUploadError('Invalid video chunk metadata.');
+    }
+    const expectedChunkSize = Math.min(VIDEO_CHUNK_SIZE, metadata.fileSize - chunkIndex * VIDEO_CHUNK_SIZE);
+    if (req.file.size !== expectedChunkSize) {
+      throw createUploadError('Video upload chunk size does not match the file.', 400, 'VIDEO_CHUNK_SIZE_MISMATCH');
     }
 
-    const safeUploadId = String(uploadId);
-    const safeFileName = path.basename(String(fileName));
-    const cIndex = Number.parseInt(String(chunkIndex), 10);
-    const tChunks = Number.parseInt(String(totalChunks), 10);
-    if (!/^[\w-]+$/.test(safeUploadId) || safeFileName !== String(fileName) || !isVideoFile(safeFileName, mimeType)) {
-      return res.status(400).json({ error: 'Invalid video upload metadata or format' });
-    }
-    if (!Number.isInteger(cIndex) || !Number.isInteger(tChunks) || tChunks < 1 || cIndex < 0 || cIndex >= tChunks) {
-      return res.status(400).json({ error: 'Invalid video chunk metadata' });
+    const uploadDirectory = getUserVideoUploadDirectory(req.user.id, metadata.uploadId);
+    await fs.promises.mkdir(uploadDirectory, { recursive: true });
+    await writeVideoUploadManifest(uploadDirectory, metadata, req.user.id);
+
+    const chunkPath = path.join(uploadDirectory, `${chunkIndex}.part`);
+    const temporaryChunkPath = `${chunkPath}.${createUploadId()}.tmp`;
+    try {
+      await fs.promises.writeFile(temporaryChunkPath, req.file.buffer, { flag: 'wx' });
+      await fs.promises.rename(temporaryChunkPath, chunkPath);
+    } finally {
+      await fs.promises.rm(temporaryChunkPath, { force: true }).catch(() => {});
     }
 
-    const tempFilePath = path.join(tempVideoDir, `temp-${safeUploadId}-${safeFileName}`);
-    const buffer = Buffer.from(chunkBase64, 'base64');
-    const existingSize = fs.existsSync(tempFilePath) ? fs.statSync(tempFilePath).size : 0;
-    if (existingSize + buffer.length > MAX_INTRO_VIDEO_SIZE) {
-      return res.status(413).json({ error: 'Video file is too large (max 3GB)' });
-    }
-    fs.appendFileSync(tempFilePath, buffer);
-
-    if (cIndex === tChunks - 1) {
-      const ext = path.extname(fileName).toLowerCase();
-      const finalFileName = `intro-${Date.now()}-${Math.round(Math.random() * 1E9)}${ext}`;
-      const finalPath = path.join(privateVideoDir, finalFileName);
-      fs.renameSync(tempFilePath, finalPath);
-      return res.json({ ok: true, temp_video_key: finalFileName });
-    }
-    res.json({ ok: true, message: 'Chunk received' });
-  } catch (err) {
-    console.error('Base64 chunk upload error:', err);
-    res.status(500).json({ error: err.message });
+    res.json({ ok: true, chunkIndex, chunkBytes: req.file.size });
+  } catch (error) {
+    videoUploadError(res, error, 'Chunk upload failed');
   }
+});
+
+router.post('/upload-complete', requireAuth, async (req, res) => {
+  let assembledPath;
+  let finalPath;
+  try {
+    const metadata = getVideoUploadMetadata(req.body || {});
+    const uploadDirectory = getUserVideoUploadDirectory(req.user.id, metadata.uploadId);
+    const storageKey = `intro-${req.user.id}-${metadata.uploadId}${metadata.extension}`;
+    finalPath = path.join(privateVideoDir, storageKey);
+    const metadataPath = `${finalPath}.json`;
+
+    if (fs.existsSync(metadataPath) && fs.existsSync(finalPath)) {
+      const savedMetadata = JSON.parse(await fs.promises.readFile(metadataPath, 'utf8'));
+      if (savedMetadata.ownerUserId === req.user.id && savedMetadata.fileSize === metadata.fileSize) {
+        return res.json({ ok: true, temp_video_key: storageKey, metadata: savedMetadata });
+      }
+      throw createUploadError('Video upload metadata does not match.', 409, 'VIDEO_METADATA_MISMATCH');
+    }
+
+    const manifest = JSON.parse(await fs.promises.readFile(path.join(uploadDirectory, 'manifest.json'), 'utf8'));
+    if (manifest.ownerUserId !== req.user.id || JSON.stringify(manifest) !== JSON.stringify({ ...metadata, ownerUserId: req.user.id })) {
+      throw createUploadError('Video upload metadata does not match.', 409, 'VIDEO_METADATA_MISMATCH');
+    }
+
+    assembledPath = path.join(uploadDirectory, 'assembled.tmp');
+    await assembleVideoChunks({
+      uploadDirectory,
+      totalChunks: metadata.totalChunks,
+      expectedSize: metadata.fileSize,
+      destinationPath: assembledPath,
+    });
+    const verified = validateVideoMetadata({
+      ...metadata,
+      signature: await readVideoSignature(assembledPath),
+    });
+    await fs.promises.rename(assembledPath, finalPath);
+    const savedMetadata = {
+      storageKey,
+      originalName: verified.fileName,
+      fileSize: verified.fileSize,
+      mimeType: verified.mimeType,
+      format: verified.format,
+      ownerUserId: req.user.id,
+      uploadId: metadata.uploadId,
+      uploadedAt: new Date().toISOString(),
+      linked: false,
+    };
+    await fs.promises.writeFile(metadataPath, JSON.stringify(savedMetadata), { flag: 'wx' });
+    await fs.promises.rm(uploadDirectory, { recursive: true, force: true });
+    res.json({ ok: true, temp_video_key: storageKey, metadata: savedMetadata });
+  } catch (error) {
+    if (assembledPath) await fs.promises.rm(assembledPath, { force: true }).catch(() => {});
+    if (finalPath && fs.existsSync(finalPath) && !fs.existsSync(`${finalPath}.json`)) {
+      await fs.promises.rm(finalPath, { force: true }).catch(() => {});
+    }
+    if (error.code === 'ENOENT') {
+      error.status = 409;
+      error.code = 'VIDEO_CHUNK_MISSING';
+      error.message = 'Video upload is incomplete. Please retry the missing chunk.';
+    }
+    videoUploadError(res, error, 'Video finalization failed');
+  }
+});
+
+router.delete('/upload-chunks/:uploadId', requireAuth, async (req, res) => {
+  try {
+    const uploadId = String(req.params.uploadId || '');
+    if (!/^[\w-]{16,80}$/.test(uploadId)) throw createUploadError('Invalid video upload ID.');
+    await fs.promises.rm(getUserVideoUploadDirectory(req.user.id, uploadId), { recursive: true, force: true });
+    res.json({ ok: true });
+  } catch (error) {
+    videoUploadError(res, error, 'Video cleanup failed');
+  }
+});
+
+router.post('/upload-chunk-base64', requireAuth, (req, res) => {
+  res.status(410).json({ error: 'This app version uses an outdated video upload method. Please update the app.', code: 'UPLOAD_METHOD_RETIRED' });
 });
 
 // POST /api/profiles/:id/intro-video
 router.post('/:id/intro-video', requireAuth, uploadVideoMiddleware, async (req, res) => {
+  let directUploadPath = null;
+  let linked = false;
   try {
     const existing = await db.get('SELECT * FROM profiles WHERE id = ?', [req.params.id]);
     if (!existing) return res.status(404).json({ error: 'Profile not found' });
     if (existing.owner_user_id !== req.user.id)
       return res.status(403).json({ error: 'Not authorized to upload video for this profile' });
 
-    let finalFileName = null;
+    let storageKey;
+    let metadata;
+    let videoPath;
+    let metadataPath;
     if (req.body.temp_video_key) {
-      finalFileName = req.body.temp_video_key;
+      storageKey = String(req.body.temp_video_key);
+      if (path.basename(storageKey) !== storageKey || !/^intro-\d+-[\w-]+\.[a-z0-9]+$/i.test(storageKey)) {
+        throw createUploadError('Invalid video upload reference.');
+      }
+      videoPath = path.join(privateVideoDir, storageKey);
+      metadataPath = `${videoPath}.json`;
+      if (existing.intro_video_key === storageKey && fs.existsSync(videoPath)) {
+        return res.json({ ok: true, message: 'Video is already linked.', status: existing.intro_video_status });
+      }
+      metadata = JSON.parse(await fs.promises.readFile(metadataPath, 'utf8'));
+      if (metadata.ownerUserId !== req.user.id || metadata.storageKey !== storageKey) {
+        throw createUploadError('Not authorized to link this video.', 403, 'VIDEO_NOT_OWNED');
+      }
     } else if (req.file) {
-      finalFileName = req.file.filename;
+      storageKey = req.file.filename;
+      videoPath = req.file.path;
+      metadataPath = `${videoPath}.json`;
+      directUploadPath = videoPath;
+      metadata = {
+        storageKey,
+        originalName: getSafeVideoName(req.file.originalname).name,
+        fileSize: req.file.size,
+        mimeType: req.file.mimetype,
+        ownerUserId: req.user.id,
+        uploadedAt: new Date().toISOString(),
+        linked: false,
+      };
     } else {
-      return res.status(400).json({ error: 'No video file provided' });
-    }
-    
-    // Client should send duration in seconds
-    const duration = parseInt(req.body.duration_seconds, 10) || 0;
-
-    // Delete old video if exists
-    if (existing.intro_video_key && existing.intro_video_key !== finalFileName) {
-      const oldPath = path.join(privateVideoDir, existing.intro_video_key);
-      if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+      throw createUploadError('No video file was provided.');
     }
 
-    await db.run('UPDATE profiles SET intro_video_key = ?, intro_video_status = ?, intro_video_duration = ? WHERE id = ?',
-      [finalFileName, 'pending', duration, req.params.id]);
+    const stats = await fs.promises.stat(videoPath);
+    metadata = validateVideoMetadata({
+      fileName: metadata.originalName,
+      mimeType: metadata.mimeType,
+      fileSize: stats.size,
+      signature: await readVideoSignature(videoPath),
+    });
+    const savedMetadata = {
+      ...metadata,
+      storageKey,
+      originalName: metadata.fileName,
+      ownerUserId: req.user.id,
+      uploadedAt: new Date().toISOString(),
+      linked: true,
+      profileId: existing.id,
+    };
+    const duration = Math.max(0, Number.parseInt(req.body.duration_seconds, 10) || 0);
+
+    if (!fs.existsSync(metadataPath)) {
+      await fs.promises.writeFile(metadataPath, JSON.stringify({ ...savedMetadata, linked: false }), { flag: 'wx' });
+    }
+
+    await db.run(`UPDATE profiles SET
+      intro_video_key = ?, intro_video_status = ?, intro_video_duration = ?,
+      intro_video_original_name = ?, intro_video_size_bytes = ?, intro_video_mime_type = ?,
+      intro_video_uploaded_at = CURRENT_TIMESTAMP
+      WHERE id = ?`, [
+      storageKey,
+      'pending',
+      duration,
+      savedMetadata.originalName,
+      savedMetadata.fileSize,
+      savedMetadata.mimeType,
+      req.params.id,
+    ]);
+    linked = true;
+    await fs.promises.writeFile(metadataPath, JSON.stringify(savedMetadata));
+
+    if (existing.intro_video_key && existing.intro_video_key !== storageKey) {
+      const oldPath = path.join(privateVideoDir, path.basename(existing.intro_video_key));
+      await fs.promises.rm(oldPath, { force: true });
+      await fs.promises.rm(`${oldPath}.json`, { force: true });
+    }
 
     res.json({ ok: true, message: 'Video uploaded successfully', status: 'pending' });
-  } catch (err) { console.error(err); res.status(500).json({ error: err.message }); }
+  } catch (error) {
+    if (directUploadPath && !linked) await fs.promises.rm(directUploadPath, { force: true }).catch(() => {});
+    videoUploadError(res, error, 'Profile video linking failed');
+  }
 });
 
 // GET /api/profiles/:id/intro-video-stream
@@ -560,10 +739,21 @@ router.get('/:id/intro-video-stream', async (req, res) => {
 
     if (!row.intro_video_key) return res.status(404).json({ error: 'Video not found' });
 
+    if (path.basename(row.intro_video_key) !== row.intro_video_key) return res.status(404).json({ error: 'Video file not found' });
     const videoPath = path.join(privateVideoDir, row.intro_video_key);
     if (!fs.existsSync(videoPath)) return res.status(404).json({ error: 'Video file not found' });
 
-    res.sendFile(videoPath);
+    const mimeType = row.intro_video_mime_type
+      || VIDEO_MIME_BY_EXTENSION[path.extname(row.intro_video_key).toLowerCase()]
+      || 'application/octet-stream';
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.sendFile(videoPath, {
+      headers: {
+        'Accept-Ranges': 'bytes',
+        'Content-Type': mimeType,
+        'Content-Disposition': `inline; filename*=UTF-8''${encodeURIComponent(row.intro_video_original_name || 'intro-video')}`,
+      },
+    });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -575,13 +765,16 @@ router.delete('/:id/intro-video', requireAuth, async (req, res) => {
     if (existing.owner_user_id !== req.user.id && req.user.role !== 'admin')
       return res.status(403).json({ error: 'Not authorized to delete this video' });
 
-    if (existing.intro_video_key) {
-      const oldPath = path.join(privateVideoDir, existing.intro_video_key);
-      if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
-    }
-
-    await db.run('UPDATE profiles SET intro_video_key = NULL, intro_video_status = ?, intro_video_duration = NULL WHERE id = ?',
+    await db.run(`UPDATE profiles SET intro_video_key = NULL, intro_video_status = ?, intro_video_duration = NULL,
+      intro_video_original_name = NULL, intro_video_size_bytes = NULL, intro_video_mime_type = NULL,
+      intro_video_uploaded_at = NULL WHERE id = ?`,
       ['pending', req.params.id]);
+
+    if (existing.intro_video_key) {
+      const oldPath = path.join(privateVideoDir, path.basename(existing.intro_video_key));
+      await fs.promises.rm(oldPath, { force: true });
+      await fs.promises.rm(`${oldPath}.json`, { force: true });
+    }
 
     res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: err.message }); }

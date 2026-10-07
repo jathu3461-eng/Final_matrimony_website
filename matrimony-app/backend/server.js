@@ -5,8 +5,9 @@ const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const path = require('path');
 
-const { dbReady } = require('./db');
+const { db, dbReady } = require('./db');
 const { initSocket } = require('./socket');
+const { cleanupExpiredVideoUploads } = require('./utils/introVideoStorage');
 
 const authRoutes = require('./routes/auth');
 const profileRoutes = require('./routes/profiles');
@@ -82,8 +83,16 @@ dbReady.then(() => {
   const server = http.createServer(app);
   initSocket(server);
 
-  // Allow up to 30 minutes for large video uploads
+  const privateVideoDir = path.join(__dirname, 'private_uploads', 'intro_videos');
+  const tempVideoDir = path.join(__dirname, 'private_uploads', 'temp_videos');
+  cleanupExpiredVideoUploads(tempVideoDir, privateVideoDir, async (metadata) => {
+    const profile = await db.get('SELECT id FROM profiles WHERE intro_video_key = ?', [metadata.storageKey]);
+    return !!profile;
+  }).catch((error) => console.error('[VideoUpload] Startup cleanup failed:', error));
+
+  // Chunked uploads stay small; this also permits long direct uploads on trusted clients.
   server.timeout = 30 * 60 * 1000;        // 30 min
+  server.requestTimeout = 30 * 60 * 1000;
   server.keepAliveTimeout = 30 * 60 * 1000;
 
   server.listen(PORT, () => {

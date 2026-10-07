@@ -645,9 +645,22 @@ function ProfilesVerification() {
 
 function VideoReviews() {
   const [videos, setVideos] = useState(null);
+  const [previewErrors, setPreviewErrors] = useState({});
 
   const load = () => api.get('/admin/intro-videos/pending').then((res) => setVideos(res.data.videos)).catch(() => setVideos([]));
   useEffect(() => { load(); }, []);
+
+  const formatFileSize = (bytes) => {
+    if (!Number.isFinite(Number(bytes)) || Number(bytes) < 0) return 'Unknown size';
+    const units = ['B', 'KB', 'MB', 'GB'];
+    let size = Number(bytes);
+    let unit = 0;
+    while (size >= 1024 && unit < units.length - 1) {
+      size /= 1024;
+      unit += 1;
+    }
+    return `${size.toFixed(unit === 0 ? 0 : 1)} ${units[unit]}`;
+  };
 
   const updateStatus = async (p, status) => {
     if (confirm(`Are you sure you want to ${status} this video?`)) {
@@ -685,14 +698,27 @@ function VideoReviews() {
               
               {/* Video Player */}
               <div className="w-full xl:w-80 shrink-0 bg-black rounded-xl overflow-hidden shadow-md aspect-video">
-                <video 
-                  src={apiUrl(`/profiles/${p.id}/intro-video-stream`)}
-                  controls
-                  controlsList="nodownload"
-                  className="w-full h-full object-contain"
-                >
-                  Your browser does not support the video tag.
-                </video>
+                {previewErrors[p.id] ? (
+                  <div className="h-full flex flex-col items-center justify-center gap-2 p-4 text-center text-white">
+                    <p className="text-sm">This browser cannot preview this video format.</p>
+                    <a
+                      href={apiUrl(`/profiles/${p.id}/intro-video-stream`)}
+                      className="text-xs underline"
+                      target="_blank"
+                      rel="noreferrer"
+                    >Open original video</a>
+                  </div>
+                ) : (
+                  <video
+                    src={apiUrl(`/profiles/${p.id}/intro-video-stream`)}
+                    controls
+                    controlsList="nodownload"
+                    className="w-full h-full object-contain"
+                    onError={() => setPreviewErrors((current) => ({ ...current, [p.id]: true }))}
+                  >
+                    Your browser does not support the video tag.
+                  </video>
+                )}
               </div>
 
               {/* Profile Details & Actions */}
@@ -706,7 +732,7 @@ function VideoReviews() {
                       <div>
                         <p className="font-bold text-slate-700 text-base">{p.name}</p>
                         <p className="text-xs text-slate-400 font-medium">
-                          @{p.username} · {p.intro_video_duration} seconds
+                          @{p.username} · {p.intro_video_duration || 'Unknown'} seconds
                         </p>
                       </div>
                     </div>
@@ -716,6 +742,12 @@ function VideoReviews() {
                     <p><span className="font-semibold">Gender:</span> {p.gender === 'M' ? 'Male' : p.gender === 'F' ? 'Female' : 'N/A'}</p>
                     <p><span className="font-semibold">DOB:</span> {p.date_of_birth}</p>
                     <p><span className="font-semibold">City/State:</span> {p.city_or_state}</p>
+                    <p className="break-all"><span className="font-semibold">File:</span> {p.intro_video_original_name || 'Unknown filename'}</p>
+                    <p><span className="font-semibold">Size:</span> {formatFileSize(p.intro_video_size_bytes)}</p>
+                    <p><span className="font-semibold">Format:</span> {p.intro_video_mime_type || 'Unknown format'}</p>
+                    <p><span className="font-semibold">Uploaded:</span> {p.intro_video_uploaded_at ? new Date(p.intro_video_uploaded_at).toLocaleString() : 'Unknown date'}</p>
+                    <p><span className="font-semibold">Status:</span> {p.intro_video_status || 'pending'}</p>
+                    <p><span className="font-semibold">Uploader:</span> {p.username} ({p.email})</p>
                   </div>
                 </div>
 

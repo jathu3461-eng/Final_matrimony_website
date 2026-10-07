@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { File as ExpoFile } from 'expo-file-system';
 import { ResizeMode, Video } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { extractError } from '@/api/client';
@@ -9,6 +10,8 @@ import { useTheme } from '@/theme';
 import { Button } from './Button';
 
 type IntroVideoUploadState = 'idle' | 'uploading' | 'selected' | 'error';
+const MIN_VIDEO_SIZE = 1 * 1024 * 1024;
+const MAX_VIDEO_SIZE = 3 * 1024 * 1024 * 1024;
 
 interface IntroVideoPickerProps {
   hasExisting?: boolean;
@@ -34,14 +37,26 @@ export function IntroVideoPicker({ hasExisting, error, onVideoSelected }: IntroV
   const [duration, setDuration] = useState<number>(0);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadBytes, setUploadBytes] = useState(0);
+  const [uploadTotalBytes, setUploadTotalBytes] = useState(0);
   const [uploadError, setUploadError] = useState('');
   const [tempVideoKey, setTempVideoKey] = useState<string | null>(null);
+  const [videoFileName, setVideoFileName] = useState<string | null>(null);
+  const [videoMimeType, setVideoMimeType] = useState<string | null>(null);
   const uploadTokenRef = useRef<string | null>(null);
+  const durationRef = useRef(0);
+  const uploadFallbackRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const formatTime = (secs: number) => {
     const m = Math.floor(secs / 60);
     const s = Math.round(secs % 60);
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
+  const formatBytes = (bytes: number) => {
+    if (bytes >= 1024 ** 3) return `${(bytes / 1024 ** 3).toFixed(1)} GB`;
+    if (bytes >= 1024 ** 2) return `${(bytes / 1024 ** 2).toFixed(1)} MB`;
+    return `${(bytes / 1024).toFixed(0)} KB`;
   };
 
   const validateDuration = (durationSecs: number) => {
@@ -56,39 +71,92 @@ export function IntroVideoPicker({ hasExisting, error, onVideoSelected }: IntroV
     return true;
   };
 
-  const uploadSelectedVideo = async (uri: string, durationSecs: number, mimeType?: string | null) => {
-    if (!validateDuration(durationSecs)) {
+  const uploadSelectedVideo = async (
+    uri: string,
+    durationSecs: number,
+    mimeType?: string | null,
+    originalName?: string | null,
+  ) => {
+    if (durationSecs > 0 && !validateDuration(durationSecs)) {
       onVideoSelected(null, 0, null, 'error');
       return;
     }
 
     if (uploadTokenRef.current?.startsWith(`${uri}:`)) return;
 
+    if (uploadFallbackRef.current) clearTimeout(uploadFallbackRef.current);
+    uploadFallbackRef.current = null;
     uploadTokenRef.current = `${uri}:${durationSecs}`;
     setUploading(true);
     setUploadProgress(0);
+    setUploadBytes(0);
     setUploadError('');
     setTempVideoKey(null);
     onVideoSelected(uri, durationSecs, null, 'uploading');
 
     try {
-      const key = await profileApi.uploadIntroVideoTempBase64(
+      const key = await profileApi.uploadIntroVideoTemp(
         uri,
-        getVideoFileName(uri),
-        setUploadProgress,
+        originalName || getVideoFileName(uri),
         mimeType,
+        (percent, uploadedBytes, totalBytes) => {
+          setUploadProgress(percent);
+          setUploadBytes(uploadedBytes);
+          setUploadTotalBytes(totalBytes);
+        },
       );
       setTempVideoKey(key);
       setUploadProgress(100);
-      onVideoSelected(uri, durationSecs, key, 'selected');
+      const finalDuration = durationRef.current || durationSecs;
+      setDuration(finalDuration);
+      onVideoSelected(uri, finalDuration, key, 'selected');
     } catch (err) {
-      const message = extractError(err, 'Failed to upload introduction video.');
+      const message = err instanceof Error
+        ? err.message
+        : extractError(err, 'Unable to upload the video right now. Please try again.');
       setUploadError(message);
       uploadTokenRef.current = null;
-      onVideoSelected(null, 0, null, 'error');
-      Alert.alert('Upload Error', message);
+      onVideoSelected(uri, durationRef.current || durationSecs, null, 'error');
     } finally {
       setUploading(false);
+    }
+  };
+
+  const useSelectedVideo = async (
+    uri: string,
+    fileName: string,
+    mimeType: string | null | undefined,
+    fileSize: number | null | undefined,
+    durationSecs = 0,
+  ) => {
+    if (typeof fileSize === 'number' && fileSize < MIN_VIDEO_SIZE) {
+      Alert.alert('Video too small', 'Video must be at least 1 MB.');
+      return;
+    }
+    if (typeof fileSize === 'number' && fileSize > MAX_VIDEO_SIZE) {
+      Alert.alert('Video too large', 'Video size must not exceed 3 GB.');
+      return;
+    }
+    if (durationSecs > 0 && !validateDuration(durationSecs)) return;
+
+    uploadTokenRef.current = null;
+    setUploadError('');
+    setUploadProgress(0);
+    setUploadBytes(0);
+    setUploadTotalBytes(fileSize || 0);
+    setTempVideoKey(null);
+    setVideoUri(uri);
+    setVideoFileName(fileName);
+    setVideoMimeType(mimeType || null);
+    setDuration(durationSecs);
+    durationRef.current = durationSecs;
+    onVideoSelected(uri, durationSecs, null, 'idle');
+    if (durationSecs > 0) {
+      await uploadSelectedVideo(uri, durationSecs, mimeType, fileName);
+    } else {
+      uploadFallbackRef.current = setTimeout(() => {
+        void uploadSelectedVideo(uri, 0, mimeType, fileName);
+      }, 3000);
     }
   };
 
@@ -108,34 +176,53 @@ export function IntroVideoPicker({ hasExisting, error, onVideoSelected }: IntroV
       if (!res.canceled && res.assets[0]) {
         const asset = res.assets[0];
         const durationSecs = asset.duration ? Math.round(asset.duration / 1000) : 0;
-
-        if (durationSecs > 0 && !validateDuration(durationSecs)) return;
-
-        uploadTokenRef.current = null;
-        setUploadError('');
-        setUploadProgress(0);
-        setTempVideoKey(null);
-        setVideoUri(asset.uri);
-        setDuration(durationSecs);
-        onVideoSelected(asset.uri, durationSecs, null, 'idle');
-
-        if (durationSecs > 0) {
-          await uploadSelectedVideo(asset.uri, durationSecs, asset.mimeType);
-        }
+        await useSelectedVideo(
+          asset.uri,
+          asset.fileName || getVideoFileName(asset.uri),
+          asset.mimeType,
+          asset.fileSize,
+          durationSecs,
+        );
       }
-    } catch {
-      Alert.alert('Error', 'Could not pick video.');
+    } catch (error) {
+      Alert.alert('Video selection error', error instanceof Error ? error.message : 'Could not pick video.');
     }
+  };
+
+  const handlePickFromFiles = async () => {
+    try {
+      const result = await ExpoFile.pickFileAsync({ mimeTypes: ['video/*', 'application/octet-stream'] });
+      if (result.canceled) return;
+      const file = result.result;
+      await useSelectedVideo(file.uri, file.name, file.type, file.size);
+    } catch (error) {
+      Alert.alert('Video selection error', error instanceof Error ? error.message : 'Could not open device files.');
+    }
+  };
+
+  const chooseVideoSource = () => {
+    Alert.alert('Choose a video', 'Select a video from your gallery or device files.', [
+      { text: 'Gallery', onPress: () => { void handlePickVideo(false); } },
+      { text: 'Browse files', onPress: () => { void handlePickFromFiles(); } },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
   };
 
   const resetSelection = () => {
     uploadTokenRef.current = null;
+    if (uploadFallbackRef.current) clearTimeout(uploadFallbackRef.current);
+    uploadFallbackRef.current = null;
     setVideoUri(null);
     setDuration(0);
+    durationRef.current = 0;
     setUploading(false);
     setUploadProgress(0);
+    setUploadBytes(0);
+    setUploadTotalBytes(0);
     setUploadError('');
     setTempVideoKey(null);
+    setVideoFileName(null);
+    setVideoMimeType(null);
     onVideoSelected(null, 0, null, 'idle');
   };
 
@@ -179,11 +266,11 @@ export function IntroVideoPicker({ hasExisting, error, onVideoSelected }: IntroV
           <View style={styles.buttonsRow}>
             <Pressable
               style={[styles.actionBtn, { borderColor: colors.primary, backgroundColor: colors.primarySoft }]}
-              onPress={() => handlePickVideo(false)}
+              onPress={chooseVideoSource}
             >
               <Ionicons name="cloud-upload" size={32} color={colors.primaryDark} />
               <Text style={[styles.actionBtnTitle, { color: colors.primaryDark }]}>Choose from device</Text>
-              <Text style={[styles.actionBtnSub, { color: colors.primaryDark }]}>MP4, MOV up to 3GB</Text>
+              <Text style={[styles.actionBtnSub, { color: colors.primaryDark }]}>Gallery or Files · 1 MB–3 GB</Text>
             </Pressable>
 
             <Pressable
@@ -207,8 +294,29 @@ export function IntroVideoPicker({ hasExisting, error, onVideoSelected }: IntroV
               onLoad={(status) => {
                 if (status.isLoaded && status.durationMillis) {
                   const s = Math.round(status.durationMillis / 1000);
+                  if (!validateDuration(s)) {
+                    onVideoSelected(videoUri, s, null, 'error');
+                    setUploadError(s < 60
+                      ? 'Your introduction video must be at least 1 minute long.'
+                      : 'Your introduction video must not exceed 2 minutes.');
+                    return;
+                  }
+                  if (uploadFallbackRef.current) clearTimeout(uploadFallbackRef.current);
+                  uploadFallbackRef.current = null;
                   setDuration(s);
-                  uploadSelectedVideo(videoUri, s);
+                  durationRef.current = s;
+                  if (tempVideoKey) {
+                    onVideoSelected(videoUri, s, tempVideoKey, 'selected');
+                  } else if (!uploadTokenRef.current?.startsWith(`${videoUri}:`)) {
+                    uploadSelectedVideo(videoUri, s, videoMimeType, videoFileName);
+                  }
+                }
+              }}
+              onError={() => {
+                if (uploadFallbackRef.current) clearTimeout(uploadFallbackRef.current);
+                uploadFallbackRef.current = null;
+                if (!uploadTokenRef.current?.startsWith(`${videoUri}:`)) {
+                  void uploadSelectedVideo(videoUri, 0, videoMimeType, videoFileName);
                 }
               }}
             />
@@ -220,6 +328,9 @@ export function IntroVideoPicker({ hasExisting, error, onVideoSelected }: IntroV
                   <View style={[styles.progressFill, { width: `${uploadProgress}%`, backgroundColor: colors.primary }]} />
                 </View>
                 <Text style={[styles.progressText, { color: colors.primary }]}>{uploadProgress}%</Text>
+                <Text style={[styles.progressDetail, { color: colors.white }]}>
+                  {formatBytes(uploadBytes)} / {formatBytes(uploadTotalBytes)}
+                </Text>
               </View>
             )}
           </View>
@@ -253,6 +364,15 @@ export function IntroVideoPicker({ hasExisting, error, onVideoSelected }: IntroV
             <View style={[styles.uploadErrorBox, { backgroundColor: colors.errorSoft, borderColor: colors.error }]}>
               <Text style={[styles.uploadErrorText, { color: colors.error }]}>{uploadError}</Text>
             </View>
+          )}
+
+          {uploadError && !uploading && (
+            <Button
+              title="Retry upload"
+              variant="secondary"
+              leftIcon="refresh"
+              onPress={() => uploadSelectedVideo(videoUri, duration, videoMimeType, videoFileName)}
+            />
           )}
 
           <Button
@@ -410,6 +530,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 16,
     marginTop: 8,
+  },
+  progressDetail: {
+    fontSize: 12,
+    marginTop: 4,
   },
   previewMeta: {
     flexDirection: 'row',
