@@ -12,6 +12,7 @@ import { SocketProvider } from '@/context/SocketContext';
 import { ToastProvider } from '@/components/MessageToast';
 import { setupNotificationListeners } from '@/services/pushNotifications';
 import { store } from '@/store';
+import type { RootStackParamList } from '@/navigation/types';
 import { StyleSheet, Text, View } from 'react-native';
 
 const queryClient = new QueryClient({
@@ -61,7 +62,7 @@ function ThemedApp() {
 }
 
 function NotificationHandler() {
-  const navigationRef = useNavigationContainerRef();
+  const navigationRef = useNavigationContainerRef<RootStackParamList>();
 
   useEffect(() => {
     const cleanup = setupNotificationListeners(

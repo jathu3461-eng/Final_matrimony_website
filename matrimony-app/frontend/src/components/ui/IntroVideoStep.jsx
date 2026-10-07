@@ -3,6 +3,15 @@ import { Camera, Upload, X, Play, RefreshCcw, Check, Loader2 } from 'lucide-reac
 import Button from './Button';
 import api from '../../api';
 
+const MAX_INTRO_VIDEO_SIZE = 3 * 1024 * 1024 * 1024;
+const VIDEO_EXTENSIONS = new Set([
+  '.3g2', '.3gp', '.asf', '.avi', '.divx', '.f4v', '.flv', '.m2t', '.m2ts', '.m2v', '.m4v',
+  '.mkv', '.mod', '.mov', '.mp4', '.mpe', '.mpeg', '.mpg', '.mts', '.ogv', '.ts', '.vob',
+  '.webm', '.wmv', '.xvid',
+]);
+
+const isVideoFile = (file) => file.type.startsWith('video/') || VIDEO_EXTENSIONS.has(`.${file.name.split('.').pop().toLowerCase()}`);
+
 export default function IntroVideoStep({ 
   hasExisting, 
   onVideoSelected,
@@ -174,7 +183,9 @@ export default function IntroVideoStep({
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    if (file.size > 3 * 1024 * 1024 * 1024) { alert('Video file is too large (max 3GB).'); return; }
+    if (file.size <= 0) { alert('The selected video file is empty.'); return; }
+    if (file.size > MAX_INTRO_VIDEO_SIZE) { alert('Video file is too large (max 3GB).'); return; }
+    if (!isVideoFile(file)) { alert('Please choose a video file.'); return; }
     const url = URL.createObjectURL(file);
     const tempVideo = document.createElement('video');
     tempVideo.preload = 'metadata';
@@ -309,7 +320,7 @@ export default function IntroVideoStep({
                   <Upload className="w-4 h-4" /> Upload Video Instead
                   <input
                     type="file"
-                    accept="video/mp4,video/quicktime,video/webm"
+                    accept="video/*"
                     className="hidden"
                     onChange={(e) => { setCameraError(null); handleFileChange(e); }}
                   />
@@ -337,8 +348,8 @@ export default function IntroVideoStep({
               <label className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-[var(--primary)] bg-[var(--primary-soft)] rounded-xl cursor-pointer hover:bg-[var(--primary)] hover:bg-opacity-10 transition-colors">
                 <Upload className="w-8 h-8 text-[var(--primary-strong)] mb-2" />
                 <span className="font-bold text-[var(--primary-strong)]">Choose from device</span>
-                <span className="text-[11px] text-[var(--primary-strong)] opacity-80 mt-1">MP4, MOV up to 3GB</span>
-                <input type="file" accept="video/mp4,video/quicktime,video/webm,video/x-matroska,.mkv" className="hidden" onChange={handleFileChange} />
+                <span className="text-[11px] text-[var(--primary-strong)] opacity-80 mt-1">Any video format, up to 3GB</span>
+                <input type="file" accept="video/*" className="hidden" onChange={handleFileChange} />
               </label>
 
               <button

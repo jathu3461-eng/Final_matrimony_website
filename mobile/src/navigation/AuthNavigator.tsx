@@ -8,7 +8,7 @@ import { ForgotPasswordScreen } from '@/screens/auth/ForgotPasswordScreen';
 import { useTheme } from '@/theme';
 import type { AuthStackParamList } from '@/navigation/types';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { StackNavigationOptions } from '@react-navigation/native-stack';
+import type { NativeStackNavigationOptions } from '@react-navigation/native-stack';
 
 const Stack = createNativeStackNavigator<AuthStackParamList>();
 
@@ -69,7 +69,7 @@ const headerStyles = StyleSheet.create({
 export function AuthNavigator() {
   const { colors } = useTheme();
 
-  const makeHeader = (title: string): StackNavigationOptions => ({
+  const makeHeader = (title: string): NativeStackNavigationOptions => ({
     headerShown: false,
     contentStyle: { backgroundColor: colors.background },
   });

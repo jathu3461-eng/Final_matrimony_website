@@ -61,6 +61,7 @@ export function EditProfileScreen() {
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [introVideoUri, setIntroVideoUri] = useState<string | null>(null);
   const [introVideoDuration, setIntroVideoDuration] = useState<number>(0);
+  const [introVideoTempKey, setIntroVideoTempKey] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [videoUploading, setVideoUploading] = useState(false);
@@ -166,6 +167,14 @@ export function EditProfileScreen() {
       Alert.alert('Validation', 'About me must be at least 50 characters.');
       return;
     }
+    if (form.intro_video_status === 'uploading') {
+      Alert.alert('Video upload', 'Please wait until the introduction video upload finishes.');
+      return;
+    }
+    if (introVideoUri && !introVideoTempKey) {
+      Alert.alert('Video upload', 'Please replace the video or wait for a successful upload before saving.');
+      return;
+    }
 
     setSaving(true);
     try {
@@ -181,19 +190,8 @@ export function EditProfileScreen() {
       }
       await profileApi.update(p.id, formData);
 
-      if (introVideoUri) {
-        const ext = introVideoUri.split('.').pop() || 'mp4';
-        const filename = `intro-video.${ext}`;
-        setVideoUploading(true);
-        setVideoUploadProgress(0);
-        try {
-          await profileApi.uploadIntroVideoChunkedBase64(p.id, introVideoUri, filename, introVideoDuration, (progress) => {
-            setVideoUploadProgress(progress);
-          });
-        } finally {
-          setVideoUploading(false);
-          setVideoUploadProgress(0);
-        }
+      if (introVideoTempKey) {
+        await profileApi.linkIntroVideo(p.id, introVideoTempKey, introVideoDuration);
       }
 
       queryClient.invalidateQueries({ queryKey: ['profile', profileId] });
@@ -475,10 +473,20 @@ export function EditProfileScreen() {
           <IntroVideoPicker
             hasExisting={form.intro_video_status === 'uploaded'}
             error={null}
-            onVideoSelected={(uri, duration) => {
+            onVideoSelected={(uri, duration, tempKey, state) => {
               setIntroVideoUri(uri);
               setIntroVideoDuration(duration);
-              setForm((f) => ({ ...f, intro_video_status: uri ? 'selected' : (f.intro_video_status === 'uploaded' ? 'uploaded' : '') }));
+              setIntroVideoTempKey(tempKey || null);
+              setForm((f) => {
+                const nextStatus = tempKey
+                  ? 'selected'
+                  : state === 'uploading'
+                    ? 'uploading'
+                    : f.intro_video_status === 'uploaded'
+                      ? 'uploaded'
+                      : '';
+                return { ...f, intro_video_status: nextStatus };
+              });
             }}
           />
         {/* Save button */}

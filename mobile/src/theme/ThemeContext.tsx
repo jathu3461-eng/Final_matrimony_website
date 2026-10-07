@@ -7,20 +7,26 @@ export type ThemeMode = 'light' | 'dark' | 'system';
 export interface ThemeColors {
   primary: string;
   primaryDark: string;
+  primaryLight: string;
   primarySoft: string;
+  primaryStrong: string;
   secondary: string;
   background: string;
   surface: string;
+  surfaceSoft: string;
   ink: string;
   inkSoft: string;
   inkFaint: string;
   border: string;
+  borderSoft: string;
   borderStrong: string;
   success: string;
   successSoft: string;
   error: string;
   errorSoft: string;
   warning: string;
+  warningSoft: string;
+  warningStrong: string;
   white: string;
   black: string;
 }
@@ -28,20 +34,26 @@ export interface ThemeColors {
 const lightColors: ThemeColors = {
   primary: '#e0136a',
   primaryDark: '#c00f5c',
+  primaryLight: '#ffe4ee',
   primarySoft: '#ffe4ee',
+  primaryStrong: '#c00f5c',
   secondary: '#78350f',
   background: '#fafaf9',
   surface: '#ffffff',
+  surfaceSoft: '#f9fafb',
   ink: '#1c1917',
   inkSoft: '#57534e',
   inkFaint: '#a8a29e',
   border: '#e7e5e4',
+  borderSoft: '#f1f5f9',
   borderStrong: '#d6d3d1',
   success: '#16a34a',
   successSoft: '#f0fdf4',
   error: '#dc2626',
   errorSoft: '#fef2f2',
   warning: '#d97706',
+  warningSoft: '#fffbeb',
+  warningStrong: '#92400e',
   white: '#ffffff',
   black: '#000000',
 };
@@ -49,20 +61,26 @@ const lightColors: ThemeColors = {
 const darkColors: ThemeColors = {
   primary: '#f472b6',
   primaryDark: '#ec4899',
+  primaryLight: '#4a1942',
   primarySoft: '#4a1942',
+  primaryStrong: '#f9a8d4',
   secondary: '#d97706',
   background: '#0f0f0f',
   surface: '#1c1c1e',
+  surfaceSoft: '#2c2c2e',
   ink: '#f5f5f4',
   inkSoft: '#a8a29e',
   inkFaint: '#57534e',
   border: '#2c2c2e',
+  borderSoft: '#27272a',
   borderStrong: '#3a3a3c',
   success: '#22c55e',
   successSoft: '#052e16',
   error: '#ef4444',
   errorSoft: '#450a0a',
   warning: '#f59e0b',
+  warningSoft: '#451a03',
+  warningStrong: '#fbbf24',
   white: '#f5f5f4',
   black: '#1c1c1e',
 };

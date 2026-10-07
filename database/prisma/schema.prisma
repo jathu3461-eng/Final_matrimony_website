@@ -61,6 +61,12 @@ enum PhotoStatus {
   rejected
 }
 
+enum IntroVideoStatus {
+  pending
+  approved
+  rejected
+}
+
 enum FileType {
   image
   pdf
@@ -583,6 +589,9 @@ model Profile {
   currentCityId         Int?                   @map("current_city_id")
   cityOrState           String                 @map("city_or_state") @db.VarChar(100)
   mainProfilePicture    String?                @map("main_profile_picture") @db.VarChar(500)
+  introVideoKey         String?                @map("intro_video_key") @db.VarChar(500)
+  introVideoStatus      IntroVideoStatus?      @default(pending) @map("intro_video_status")
+  introVideoDuration    Int?                   @map("intro_video_duration")
   aboutMe               String                 @map("about_me") @db.Text
   isManglik             Boolean?               @map("is_manglik")
   profileViewCount      Int                    @default(0) @map("profile_view_count")

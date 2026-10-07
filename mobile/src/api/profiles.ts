@@ -1,6 +1,55 @@
 import api from './client';
 import type { Profile, ProfileMeta } from '@/types';
 
+const VIDEO_CHUNK_SIZE = 512 * 1024;
+const MAX_INTRO_VIDEO_SIZE = 3 * 1024 * 1024 * 1024;
+
+async function uploadIntroVideoTempBase64(
+  fileUri: string,
+  fileName: string,
+  onProgress?: (p: number) => void,
+  mimeType?: string | null,
+): Promise<string> {
+  const FileSystem = require('expo-file-system');
+  const fileInfo = await FileSystem.getInfoAsync(fileUri);
+  if (!fileInfo.exists) throw new Error('Video file does not exist');
+  if (!fileInfo.size || fileInfo.size <= 0) throw new Error('Could not read video size');
+  if (fileInfo.size > MAX_INTRO_VIDEO_SIZE) throw new Error('Video file is too large (max 3GB)');
+
+  const totalChunks = Math.ceil(fileInfo.size / VIDEO_CHUNK_SIZE);
+  const uploadId = Date.now().toString();
+  let tempKey: string | null = null;
+
+  for (let i = 0; i < totalChunks; i += 1) {
+    const position = i * VIDEO_CHUNK_SIZE;
+    const length = Math.min(VIDEO_CHUNK_SIZE, fileInfo.size - position);
+
+    const base64 = await FileSystem.readAsStringAsync(fileUri, {
+      encoding: FileSystem.EncodingType.Base64,
+      position,
+      length,
+    });
+
+    const { data } = await api.post('/profiles/upload-chunk-base64', {
+      uploadId,
+      chunkIndex: i,
+      totalChunks,
+      fileName,
+      mimeType,
+      chunkBase64: base64,
+    });
+
+    onProgress?.(Math.round(((i + 1) / totalChunks) * 100));
+
+    if (i === totalChunks - 1) {
+      tempKey = data.temp_video_key;
+    }
+  }
+
+  if (!tempKey) throw new Error('Failed to get temp video key');
+  return tempKey;
+}
+
 export interface SearchParams {
   q?: string;
   gender?: 'M' | 'F';
@@ -64,44 +113,25 @@ export const profileApi = {
     });
   },
 
+  async uploadIntroVideoTempBase64(
+    fileUri: string,
+    fileName: string,
+    onProgress?: (p: number) => void,
+    mimeType?: string | null,
+  ): Promise<string> {
+    return uploadIntroVideoTempBase64(fileUri, fileName, onProgress, mimeType);
+  },
+
+  async linkIntroVideo(id: number | string, tempVideoKey: string, durationSecs: number): Promise<void> {
+    await api.post(`/profiles/${id}/intro-video`, {
+      temp_video_key: tempVideoKey,
+      duration_seconds: durationSecs,
+    });
+  },
+
   async uploadIntroVideoChunkedBase64(id: number | string, fileUri: string, fileName: string, durationSecs: number, onProgress?: (p: number) => void): Promise<void> {
-    const FileSystem = require('expo-file-system');
-    const fileInfo = await FileSystem.getInfoAsync(fileUri);
-    if (!fileInfo.exists) throw new Error('Video file does not exist');
-    
-    const CHUNK_SIZE = 512 * 1024; // 512 KB
-    const totalChunks = Math.ceil(fileInfo.size / CHUNK_SIZE);
-    const uploadId = Date.now().toString();
-    let tempKey = null;
-
-    for (let i = 0; i < totalChunks; i++) {
-      const position = i * CHUNK_SIZE;
-      const length = Math.min(CHUNK_SIZE, fileInfo.size - position);
-      
-      const base64 = await FileSystem.readAsStringAsync(fileUri, {
-        encoding: FileSystem.EncodingType.Base64,
-        position,
-        length,
-      });
-
-      const { data } = await api.post('/profiles/upload-chunk-base64', {
-        uploadId,
-        chunkIndex: i,
-        totalChunks,
-        fileName,
-        chunkBase64: base64
-      });
-
-      if (onProgress) onProgress(Math.round(((i + 1) / totalChunks) * 100));
-
-      if (i === totalChunks - 1) {
-        tempKey = data.temp_video_key;
-      }
-    }
-
-    // Link temp_video_key to profile
-    if (!tempKey) throw new Error('Failed to get temp video key');
-    await api.post(`/profiles/${id}/intro-video`, { temp_video_key: tempKey, duration_seconds: durationSecs });
+    const tempKey = await uploadIntroVideoTempBase64(fileUri, fileName, onProgress);
+    await this.linkIntroVideo(id, tempKey, durationSecs);
   },
 
   async match(profileId1: number, profileId2: number) {

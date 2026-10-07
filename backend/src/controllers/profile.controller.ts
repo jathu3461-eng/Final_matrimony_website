@@ -1,8 +1,16 @@
+import fs from 'fs';
+import path from 'path';
 import { Response } from 'express';
 import prisma from '../config/db';
 import { AuthenticatedRequest } from '../middleware/auth.middleware';
 import { uploadToCloudinary } from '../utils/cloudinary.utils';
 import { verifyProfilePhoto } from '../utils/aiVerification.utils';
+
+const INTRO_VIDEO_DIR = path.join(process.cwd(), 'private_uploads', 'intro_videos');
+const TEMP_VIDEO_DIR = path.join(process.cwd(), 'private_uploads', 'temp_videos');
+
+if (!fs.existsSync(INTRO_VIDEO_DIR)) fs.mkdirSync(INTRO_VIDEO_DIR, { recursive: true });
+if (!fs.existsSync(TEMP_VIDEO_DIR)) fs.mkdirSync(TEMP_VIDEO_DIR, { recursive: true });
 
 // ============================================================
 // POST /api/v1/profiles
@@ -13,30 +21,60 @@ export const createProfile = async (req: AuthenticatedRequest, res: Response): P
     return;
   }
 
+  const rawBody = req.body ?? {};
   const {
     profileRegisteredFor,
+    profile_registered_for: profileRegisteredForSnake,
     name,
     gender,
     dateOfBirth,
+    date_of_birth: dateOfBirthSnake,
     // Frontend sends heightFeet + heightInches; we convert to heightCm for the DB
     heightFeet,
+    height_feet: heightFeetSnake,
     heightInches,
+    height_inches: heightInchesSnake,
     heightCm,
     religionId,
+    religion_id: religionIdSnake,
     casteId,
+    caste_id: casteIdSnake,
     raasiId,
+    raasi_id: raasiIdSnake,
     starId,
+    star_id: starIdSnake,
     bornCountryId,
+    born_country_id: bornCountryIdSnake,
     currentCountryId,
+    current_country_id: currentCountryIdSnake,
     cityOrState,
+    city_or_state: cityOrStateSnake,
     mainProfilePicture,
+    main_profile_picture: mainProfilePictureSnake,
     aboutMe,
-  } = req.body;
+    about_me: aboutMeSnake,
+  } = rawBody;
+
+  const resolvedProfileRegisteredFor = profileRegisteredFor ?? profileRegisteredForSnake;
+  const resolvedName = name ?? rawBody.name;
+  const resolvedGender = gender ?? rawBody.gender;
+  const resolvedDateOfBirth = dateOfBirth ?? dateOfBirthSnake;
+  const resolvedHeightFeet = heightFeet ?? heightFeetSnake;
+  const resolvedHeightInches = heightInches ?? heightInchesSnake;
+  const resolvedReligionId = religionId ?? religionIdSnake;
+  const resolvedCasteId = casteId ?? casteIdSnake;
+  const resolvedRaasiId = raasiId ?? raasiIdSnake;
+  const resolvedStarId = starId ?? starIdSnake;
+  const resolvedBornCountryId = bornCountryId ?? bornCountryIdSnake;
+  const resolvedCurrentCountryId = currentCountryId ?? currentCountryIdSnake;
+  const resolvedCityOrState = cityOrState ?? cityOrStateSnake;
+  const resolvedMainPicture = mainProfilePicture ?? mainProfilePictureSnake;
+  const resolvedAboutMe = aboutMe ?? aboutMeSnake;
 
   // Convert feet+inches → cm  (1 foot = 30.48 cm, 1 inch = 2.54 cm)
   const resolvedHeightCm: number = heightCm
     ? Number(heightCm)
-    : Math.round((Number(heightFeet || 5) * 30.48) + (Number(heightInches || 0) * 2.54));
+    : Math.round((Number(resolvedHeightFeet || 5) * 30.48) + (Number(resolvedHeightInches || 0) * 2.54));
 
   try {
     const userId = req.user.id;
@@ -87,8 +125,8 @@ export const createProfile = async (req: AuthenticatedRequest, res: Response): P
     let resolvedMainPicture = mainProfilePicture;
     let newPhotoUrl: string | null = null;
 
-    if (mainProfilePicture && mainProfilePicture.startsWith('data:image/')) {
-      const matches = mainProfilePicture.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+    if (resolvedMainPicture && resolvedMainPicture.startsWith('data:image/')) {
+      const matches = resolvedMainPicture.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
       if (!matches || matches.length !== 3) {
         res.status(400).json({ success: false, error: { message: 'Invalid image format.', code: 'BAD_REQUEST' } });
         return;
@@ -126,20 +164,20 @@ export const createProfile = async (req: AuthenticatedRequest, res: Response): P
     const profile = await prisma.profile.create({
       data: {
         userId,
-        profileRegisteredFor,
-        name,
-        gender,
-        dateOfBirth: new Date(dateOfBirth),
+        profileRegisteredFor: resolvedProfileRegisteredFor,
+        name: resolvedName,
+        gender: resolvedGender,
+        dateOfBirth: new Date(resolvedDateOfBirth),
         heightCm: resolvedHeightCm,
-        religionId:       Number(religionId),
-        casteId:          Number(casteId),
-        raasiId:          Number(raasiId),
-        starId:           Number(starId),
-        bornCountryId:    Number(bornCountryId),
-        currentCountryId: Number(currentCountryId),
-        cityOrState:      cityOrState || '',
+        religionId:       Number(resolvedReligionId),
+        casteId:          Number(resolvedCasteId),
+        raasiId:          Number(resolvedRaasiId),
+        starId:           Number(resolvedStarId),
+        bornCountryId:    Number(resolvedBornCountryId),
+        currentCountryId: Number(resolvedCurrentCountryId),
+        cityOrState:      resolvedCityOrState || '',
         mainProfilePicture: resolvedMainPicture || null,
-        aboutMe:          aboutMe || '',
+        aboutMe:          resolvedAboutMe || '',
       },
     });
 
@@ -157,6 +195,7 @@ export const createProfile = async (req: AuthenticatedRequest, res: Response): P
     res.status(201).json({
       success: true,
       message: 'Matrimony profile created successfully.',
+      profile,
       data: profile,
     });
   } catch (error) {
@@ -194,6 +233,7 @@ export const getMyProfiles = async (req: AuthenticatedRequest, res: Response): P
 
     res.status(200).json({
       success: true,
+      profiles,
       data: profiles,
     });
   } catch (error) {
@@ -236,6 +276,7 @@ export const getProfile = async (req: AuthenticatedRequest, res: Response): Prom
 
     res.status(200).json({
       success: true,
+      profile,
       data: profile,
     });
   } catch (error) {
@@ -349,6 +390,7 @@ export const updateProfile = async (req: AuthenticatedRequest, res: Response): P
     res.status(200).json({
       success: true,
       message: 'Profile updated successfully.',
+      profile: updated,
       data: updated,
     });
   } catch (error) {

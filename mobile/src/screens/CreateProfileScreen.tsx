@@ -59,6 +59,7 @@ export function CreateProfileScreen() {
   const [horoscopeUri, setHoroscopeUri] = useState<string | null>(null);
   const [introVideoUri, setIntroVideoUri] = useState<string | null>(null);
   const [introVideoDuration, setIntroVideoDuration] = useState<number>(0);
+  const [introVideoTempKey, setIntroVideoTempKey] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView>(null);
 
   useEffect(() => {
@@ -190,15 +191,10 @@ export function CreateProfileScreen() {
           type: `image/${ext}`,
         } as unknown as Blob);
       }
-      const res = await profileApi.create(formData);
-      
-      // Upload video if selected
-      if (introVideoUri) {
-        const ext = introVideoUri.split('.').pop() || 'mp4';
-        const filename = `intro-video.${ext}`;
-        await profileApi.uploadIntroVideoChunkedBase64(res.profile.id, introVideoUri, filename, introVideoDuration, (progress) => {
-          // Progress can be handled here if needed in UI
-        });
+      const createdProfile = await profileApi.create(formData);
+
+      if (introVideoTempKey) {
+        await profileApi.linkIntroVideo(createdProfile.id, introVideoTempKey, introVideoDuration);
       }
 
       Alert.alert('Profile created', 'Your profile is now live.', [
@@ -586,23 +582,8 @@ export function CreateProfileScreen() {
           </>
         );
 
-      // Step 9: Introduction Video
+      // Step 9: Bio & Review
       case 9:
-        return (
-          <IntroVideoPicker
-            hasExisting={form.intro_video_status === 'uploaded'}
-            error={touched.intro_video_status ? stepErrors.intro_video_status : null}
-            onVideoSelected={(uri, duration) => {
-              setIntroVideoUri(uri);
-              setIntroVideoDuration(duration);
-              setForm((f) => ({ ...f, intro_video_status: uri ? 'selected' : (f.intro_video_status === 'uploaded' ? 'uploaded' : '') }));
-              if (uri) setTouched((t) => ({ ...t, intro_video_status: true }));
-            }}
-          />
-        );
-
-      // Step 10: Bio & Review
-      case 10:
         return (
           <>
             <FormField
@@ -617,6 +598,35 @@ export function CreateProfileScreen() {
               error={touched.about_me ? stepErrors.about_me : null}
               hint={touched.about_me ? undefined : 'Minimum 50 characters — tell your story'}
               style={{ minHeight: 120, textAlignVertical: 'top' }}
+            />
+          </>
+        );
+
+      // Step 10: Introduction Video
+      case 10:
+        return (
+          <>
+            <IntroVideoPicker
+              hasExisting={form.intro_video_status === 'uploaded'}
+              error={touched.intro_video_status ? stepErrors.intro_video_status : null}
+              onVideoSelected={(uri, duration, tempKey, state) => {
+                setIntroVideoUri(uri);
+                setIntroVideoDuration(duration);
+                setIntroVideoTempKey(tempKey || null);
+                setForm((f) => {
+                  const nextStatus = tempKey
+                    ? 'selected'
+                    : state === 'uploading'
+                      ? 'uploading'
+                      : f.intro_video_status === 'uploaded'
+                        ? 'uploaded'
+                        : '';
+                  return { ...f, intro_video_status: nextStatus };
+                });
+                if (state === 'uploading' || tempKey || state === 'error') {
+                  setTouched((t) => ({ ...t, intro_video_status: true }));
+                }
+              }}
             />
 
             <View style={[styles.reviewCard, { borderColor: colors.border, backgroundColor: colors.surface }]}>
@@ -694,6 +704,7 @@ export function CreateProfileScreen() {
         {/* Content */}
         <ScrollView
           ref={scrollRef}
+          style={styles.flex}
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}

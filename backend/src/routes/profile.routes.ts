@@ -30,28 +30,113 @@ const upload = multer({
   },
 });
 
+const normalizeProfileBody = (body: Record<string, any>) => {
+  const out = { ...body };
+  const fieldMap: Record<string, string> = {
+    profileRegisteredFor: 'profileRegisteredFor',
+    profile_registered_for: 'profileRegisteredFor',
+    dateOfBirth: 'dateOfBirth',
+    date_of_birth: 'dateOfBirth',
+    heightFeet: 'heightFeet',
+    height_feet: 'heightFeet',
+    heightInches: 'heightInches',
+    height_inches: 'heightInches',
+    heightCm: 'heightCm',
+    height_cm: 'heightCm',
+    religionId: 'religionId',
+    religion_id: 'religionId',
+    casteId: 'casteId',
+    caste_id: 'casteId',
+    raasiId: 'raasiId',
+    raasi_id: 'raasiId',
+    starId: 'starId',
+    star_id: 'starId',
+    bornCountryId: 'bornCountryId',
+    born_country_id: 'bornCountryId',
+    currentCountryId: 'currentCountryId',
+    current_country_id: 'currentCountryId',
+    cityOrState: 'cityOrState',
+    city_or_state: 'cityOrState',
+    mainProfilePicture: 'mainProfilePicture',
+    main_profile_picture: 'mainProfilePicture',
+    aboutMe: 'aboutMe',
+    about_me: 'aboutMe',
+  };
+
+  for (const [key, canonical] of Object.entries(fieldMap)) {
+    if (out[key] !== undefined && out[canonical] === undefined) {
+      out[canonical] = out[key];
+    }
+  }
+
+  return out;
+};
+
+const validateProfileBody = (schema: z.ZodTypeAny) => {
+  return (req: any, res: any, next: any) => {
+    try {
+      const parsed = schema.parse(req.body ?? {});
+      req.body = normalizeProfileBody(parsed);
+      next();
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({
+          success: false,
+          error: {
+            message: 'Validation failed. Please check your profile details.',
+            code: 'VALIDATION_ERROR',
+            fields: error.errors.map((err: any) => ({
+              field: err.path.join('.'),
+              message: err.message,
+            })),
+          },
+        });
+        return;
+      }
+      next(error);
+    }
+  };
+};
+
 // Inline Zod schemas for quick validations
 const profileInputSchema = z.object({
-  profileRegisteredFor: z.enum(['self', 'son', 'daughter', 'brother', 'sister', 'relative', 'friend', 'client']),
-  name: z.string().min(2).max(100),
-  gender: z.enum(['M', 'F']),
-  dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  heightCm:     z.number().int().min(100).max(250).optional(),
-  heightFeet:   z.number().int().min(3).max(7).optional(),
+  profileRegisteredFor: z.enum(['self', 'son', 'daughter', 'brother', 'sister', 'relative', 'friend', 'client']).optional(),
+  profile_registered_for: z.enum(['self', 'son', 'daughter', 'brother', 'sister', 'relative', 'friend', 'client']).optional(),
+  name: z.string().min(2).max(100).optional(),
+  gender: z.enum(['M', 'F']).optional(),
+  dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  date_of_birth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  heightCm: z.number().int().min(100).max(250).optional(),
+  height_cm: z.number().int().min(100).max(250).optional(),
+  heightFeet: z.number().int().min(3).max(7).optional(),
+  height_feet: z.number().int().min(3).max(7).optional(),
   heightInches: z.number().int().min(0).max(11).optional(),
-  education:   z.string().optional().nullable(),
-  occupation:   z.string().optional().nullable(),
-  religionId:   z.number().int().positive(),
-  casteId:      z.number().int().positive(),
-  subReligion:  z.string().max(100).optional().nullable(),
-  raasiId: z.number().int().min(1).max(12),
-  starId: z.number().int().min(1).max(27),
-  bornCountryId: z.number().int().positive(),
-  currentCountryId: z.number().int().positive(),
-  cityOrState: z.string().min(2).max(100),
+  height_inches: z.number().int().min(0).max(11).optional(),
+  education: z.string().optional().nullable(),
+  occupation: z.string().optional().nullable(),
+  religionId: z.number().int().positive().optional(),
+  religion_id: z.number().int().positive().optional(),
+  casteId: z.number().int().positive().optional(),
+  caste_id: z.number().int().positive().optional(),
+  subReligion: z.string().max(100).optional().nullable(),
+  sub_religion: z.string().max(100).optional().nullable(),
+  raasiId: z.number().int().min(1).max(12).optional(),
+  raasi_id: z.number().int().min(1).max(12).optional(),
+  starId: z.number().int().min(1).max(27).optional(),
+  star_id: z.number().int().min(1).max(27).optional(),
+  bornCountryId: z.number().int().positive().optional(),
+  born_country_id: z.number().int().positive().optional(),
+  currentCountryId: z.number().int().positive().optional(),
+  current_country_id: z.number().int().positive().optional(),
+  cityOrState: z.string().min(2).max(100).optional(),
+  city_or_state: z.string().min(2).max(100).optional(),
   mainProfilePicture: z.string().optional().nullable(),
-  aboutMe: z.string().min(10),
+  main_profile_picture: z.string().optional().nullable(),
+  aboutMe: z.string().min(10).optional(),
+  about_me: z.string().min(10).optional(),
 }).passthrough();
+
+const profileInputPartialSchema = profileInputSchema.partial();
 
 /**
  * @route   POST /api/v1/profiles
@@ -61,8 +146,12 @@ const profileInputSchema = z.object({
 router.post(
   '/',
   authenticate,
+  upload.fields([
+    { name: 'main_profile_picture', maxCount: 1 },
+    { name: 'horoscope_chart', maxCount: 1 },
+  ]),
   apiRateLimiter,
-  validateBody(profileInputSchema),
+  validateProfileBody(profileInputSchema),
   createProfile
 );
 
@@ -88,8 +177,12 @@ router.get('/:id', apiRateLimiter, getProfile);
 router.put(
   '/:id',
   authenticate,
+  upload.fields([
+    { name: 'main_profile_picture', maxCount: 1 },
+    { name: 'horoscope_chart', maxCount: 1 },
+  ]),
   apiRateLimiter,
-  validateBody(profileInputSchema.partial()),
+  validateProfileBody(profileInputPartialSchema),
   updateProfile
 );
 

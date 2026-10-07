@@ -65,6 +65,16 @@ const privateVideoDir = path.join(__dirname, '..', 'private_uploads', 'intro_vid
 const tempVideoDir = path.join(__dirname, '..', 'private_uploads', 'temp_videos');
 if (!fs.existsSync(privateVideoDir)) fs.mkdirSync(privateVideoDir, { recursive: true });
 if (!fs.existsSync(tempVideoDir)) fs.mkdirSync(tempVideoDir, { recursive: true });
+const MAX_INTRO_VIDEO_SIZE = 3 * 1024 * 1024 * 1024;
+const VIDEO_EXTENSIONS = new Set([
+  '.3g2', '.3gp', '.asf', '.avi', '.divx', '.f4v', '.flv', '.m2t', '.m2ts', '.m2v', '.m4v',
+  '.mkv', '.mod', '.mov', '.mp4', '.mpe', '.mpeg', '.mpg', '.mts', '.ogv', '.ts', '.vob',
+  '.webm', '.wmv', '.xvid',
+]);
+
+function isVideoFile(fileName, mimeType = '') {
+  return mimeType.startsWith('video/') || VIDEO_EXTENSIONS.has(path.extname(fileName).toLowerCase());
+}
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadDir),
@@ -111,15 +121,13 @@ const videoStorage = multer.diskStorage({
 });
 
 function videoFilter(req, file, cb) {
-  const allowed = ['.mp4', '.mov', '.webm', '.mkv', '.3gp'];
-  const ext = path.extname(file.originalname).toLowerCase();
-  if (!allowed.includes(ext)) {
-    return cb(new Error('Invalid Format. Video must be .mp4, .mov, or .webm'));
+  if (!isVideoFile(file.originalname, file.mimetype)) {
+    return cb(new Error('Invalid Format. Please choose a supported video file.'));
   }
   cb(null, true);
 }
 
-const uploadVideo = multer({ storage: videoStorage, fileFilter: videoFilter, limits: { fileSize: 3 * 1024 * 1024 * 1024 } }); // 3GB
+const uploadVideo = multer({ storage: videoStorage, fileFilter: videoFilter, limits: { fileSize: MAX_INTRO_VIDEO_SIZE } });
 
 const uploadVideoMiddleware = (req, res, next) => {
   uploadVideo.single('intro_video')(req, res, (err) => {
@@ -419,16 +427,29 @@ router.post('/upload-chunk', requireAuth, uploadChunkMiddleware, async (req, res
       return res.status(400).json({ error: 'No chunk file provided' });
     }
 
+    const safeUploadId = String(uploadId);
+    const safeFileName = path.basename(String(fileName));
+    const cIndex = Number.parseInt(String(chunkIndex), 10);
+    const tChunks = Number.parseInt(String(totalChunks), 10);
+    if (!/^[\w-]+$/.test(safeUploadId) || safeFileName !== String(fileName) || !isVideoFile(safeFileName, req.file.mimetype)) {
+      return res.status(400).json({ error: 'Invalid video upload metadata or format' });
+    }
+    if (!Number.isInteger(cIndex) || !Number.isInteger(tChunks) || tChunks < 1 || cIndex < 0 || cIndex >= tChunks) {
+      return res.status(400).json({ error: 'Invalid video chunk metadata' });
+    }
+
     if (!fs.existsSync(tempVideoDir)) fs.mkdirSync(tempVideoDir, { recursive: true });
 
-    const tempFilePath = path.join(tempVideoDir, `${uploadId}_${fileName}`);
+    const tempFilePath = path.join(tempVideoDir, `${safeUploadId}_${safeFileName}`);
     const chunkData = req.file.buffer; // Buffer from multer memoryStorage
+
+    const existingSize = fs.existsSync(tempFilePath) ? fs.statSync(tempFilePath).size : 0;
+    if (existingSize + chunkData.length > MAX_INTRO_VIDEO_SIZE) {
+      return res.status(413).json({ error: 'Video file is too large (max 3GB)' });
+    }
 
     // Append chunk to file
     fs.appendFileSync(tempFilePath, chunkData);
-
-    const cIndex = parseInt(chunkIndex, 10);
-    const tChunks = parseInt(totalChunks, 10);
 
     if (cIndex === tChunks - 1) {
       // Final chunk received
@@ -453,17 +474,29 @@ router.post('/upload-chunk', requireAuth, uploadChunkMiddleware, async (req, res
 // For mobile app which cannot easily send multipart sliced blobs
 router.post('/upload-chunk-base64', requireAuth, express.json({ limit: '5mb' }), async (req, res) => {
   try {
-    const { uploadId, chunkIndex, totalChunks, fileName, chunkBase64 } = req.body;
+    const { uploadId, chunkIndex, totalChunks, fileName, chunkBase64, mimeType } = req.body;
     if (!uploadId || chunkIndex === undefined || !totalChunks || !fileName || !chunkBase64) {
       return res.status(400).json({ error: 'Missing chunk parameters' });
     }
 
-    const tempFilePath = path.join(privateVideoDir, `temp-${uploadId}.mp4`);
-    const buffer = Buffer.from(chunkBase64, 'base64');
-    fs.appendFileSync(tempFilePath, buffer);
+    const safeUploadId = String(uploadId);
+    const safeFileName = path.basename(String(fileName));
+    const cIndex = Number.parseInt(String(chunkIndex), 10);
+    const tChunks = Number.parseInt(String(totalChunks), 10);
+    if (!/^[\w-]+$/.test(safeUploadId) || safeFileName !== String(fileName) || !isVideoFile(safeFileName, mimeType)) {
+      return res.status(400).json({ error: 'Invalid video upload metadata or format' });
+    }
+    if (!Number.isInteger(cIndex) || !Number.isInteger(tChunks) || tChunks < 1 || cIndex < 0 || cIndex >= tChunks) {
+      return res.status(400).json({ error: 'Invalid video chunk metadata' });
+    }
 
-    const cIndex = parseInt(chunkIndex, 10);
-    const tChunks = parseInt(totalChunks, 10);
+    const tempFilePath = path.join(tempVideoDir, `temp-${safeUploadId}-${safeFileName}`);
+    const buffer = Buffer.from(chunkBase64, 'base64');
+    const existingSize = fs.existsSync(tempFilePath) ? fs.statSync(tempFilePath).size : 0;
+    if (existingSize + buffer.length > MAX_INTRO_VIDEO_SIZE) {
+      return res.status(413).json({ error: 'Video file is too large (max 3GB)' });
+    }
+    fs.appendFileSync(tempFilePath, buffer);
 
     if (cIndex === tChunks - 1) {
       const ext = path.extname(fileName).toLowerCase();
