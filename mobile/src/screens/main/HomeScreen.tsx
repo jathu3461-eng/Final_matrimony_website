@@ -195,7 +195,19 @@ export function HomeScreen() {
                   </View>
                 )}
                 {i.status === 'accepted' && (
-                  <Button title="Send Message" variant="outline" size="sm" leftIcon="chatbubbles" onPress={() => {}} />
+                  <Button 
+                    title="Send Message" 
+                    variant="outline" 
+                    size="sm" 
+                    leftIcon="chatbubbles" 
+                    onPress={() => {
+                      (navigation as any).navigate('ChatThread', {
+                        profileA: i.receiver_profile_id,
+                        profileB: i.sender_profile_id,
+                        otherName: i.sender_name || 'Profile',
+                      });
+                    }} 
+                  />
                 )}
               </View>
             ))
