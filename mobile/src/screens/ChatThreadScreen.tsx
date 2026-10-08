@@ -91,7 +91,6 @@ export function ChatThreadScreen() {
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [inputHeight, setInputHeight] = useState(44);
   const [selectedMsg, setSelectedMsg] = useState<ChatMessage | null>(null);
   const flatListRef = useRef<FlatList>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -326,12 +325,24 @@ export function ChatThreadScreen() {
     }
   }, [loading]);
 
+  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+
   useEffect(() => {
-    const sub = Keyboard.addListener(
+    const subShow = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-      () => scrollToBottom(),
+      () => {
+        setKeyboardVisible(true);
+        scrollToBottom();
+      }
     );
-    return () => sub.remove();
+    const subHide = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setKeyboardVisible(false)
+    );
+    return () => {
+      subShow.remove();
+      subHide.remove();
+    };
   }, []);
 
   const stopTypingSignal = () => {
@@ -362,7 +373,6 @@ export function ChatThreadScreen() {
     if (!trimmed || sending) return;
     setSending(true);
     setText('');
-    setInputHeight(44);
     stopTypingSignal();
     const clientId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
@@ -451,8 +461,8 @@ export function ChatThreadScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.root}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={insets.top + 44}
+      behavior="padding"
+      keyboardVerticalOffset={0}
     >
       {/* ── Conversation Header ── */}
       <View style={[styles.convHeader, { paddingTop: insets.top + 10 }]}>
@@ -593,7 +603,7 @@ export function ChatThreadScreen() {
       )}
 
       {/* ── Composer ── */}
-      <View style={[styles.composer, { paddingBottom: insets.bottom + 10 }]}>
+      <View style={[styles.composer, { paddingBottom: isKeyboardVisible ? 10 : Math.max(insets.bottom, 10) }]}>
         <View style={styles.composerInputWrap}>
           <TextInput
             style={styles.composerInput}
@@ -603,10 +613,6 @@ export function ChatThreadScreen() {
             onChangeText={onTextChange}
             multiline
             maxLength={2000}
-            onContentSizeChange={(e) => {
-              const h = Math.min(e.nativeEvent.contentSize.height, 100);
-              setInputHeight(Math.max(44, h));
-            }}
             onFocus={scrollToBottom}
           />
         </View>
