@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import api, { uploadsUrl } from '../api';
 import { useAuth } from '../context/AuthContext';
+import { useChat } from '../context/ChatContext';
 import { useI18n } from '../context/I18nContext';
 import ProfileCard from '../components/ProfileCard';
 import { Button, Badge, Skeleton, ErrorCard, useToast } from '../components/ui';
@@ -33,6 +34,7 @@ function ProfileGridSkeleton() {
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const { subscribe } = useChat();
   const { t } = useI18n();
   const navigate = useNavigate();
   const toast = useToast();
@@ -98,6 +100,12 @@ export default function Dashboard() {
     const res = await api.get('/interests/my-interactions');
     setInteractions(res.data);
   };
+
+  useEffect(() => {
+    return subscribe('chat:interest', () => {
+      refreshInteractions().catch(console.error);
+    });
+  }, [subscribe]);
 
   const handleInterestResponse = async (id, status) => {
     setBusyId(id);
