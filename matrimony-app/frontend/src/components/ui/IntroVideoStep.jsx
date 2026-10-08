@@ -163,6 +163,18 @@ export default function IntroVideoStep({
   };
 
   const uploadVideoFile = async (file, durationVal) => {
+    if (!Number.isFinite(durationVal)) {
+      setUploadError('Unable to read video duration.');
+      return;
+    }
+    if (durationVal < 30) {
+      setUploadError('Video must be at least 30 seconds long.');
+      return;
+    }
+    if (durationVal > 120) {
+      setUploadError('Video must not exceed 2 minutes.');
+      return;
+    }
     if (file.size < MIN_INTRO_VIDEO_SIZE) {
       setUploadError('Video must be at least 1 MB.');
       return;
@@ -311,17 +323,23 @@ export default function IntroVideoStep({
     const tempVideo = document.createElement('video');
     tempVideo.preload = 'metadata';
     tempVideo.onloadedmetadata = () => {
-      const videoDuration = Math.round(tempVideo.duration);
-      if (videoDuration < 60) {
+      const videoDuration = tempVideo.duration;
+      if (!Number.isFinite(videoDuration)) {
         uploadStarted = true;
         clearTimeout(uploadFallback);
-        setUploadError('Your introduction video must be at least 1 minute long.');
+        setUploadError('Unable to read video duration.');
+        return;
+      }
+      if (videoDuration < 30) {
+        uploadStarted = true;
+        clearTimeout(uploadFallback);
+        setUploadError('Video must be at least 30 seconds long.');
         return;
       }
       if (videoDuration > 120) {
         uploadStarted = true;
         clearTimeout(uploadFallback);
-        setUploadError('Your introduction video must not exceed 2 minutes.');
+        setUploadError('Video must not exceed 2 minutes.');
         return;
       }
       startUpload(videoDuration);
@@ -395,7 +413,7 @@ export default function IntroVideoStep({
           <div>
             <h3 className="text-lg font-bold text-[var(--ink)]">Introduction Video</h3>
             <p className="text-sm text-[var(--ink-soft)] mt-1">
-              Please upload a short introduction video between <strong>1 and 2 minutes</strong>.
+              Please upload a short introduction video between <strong>30 seconds and 2 minutes</strong>.
             </p>
           </div>
         </div>
@@ -519,9 +537,9 @@ export default function IntroVideoStep({
                 <Button type="button" onClick={stopRecording} className="bg-red-500 hover:bg-red-600 text-white">Stop Recording</Button>
               )}
             </div>
-            {recording && duration < 60 && (
+            {recording && duration < 30 && (
               <p className="text-[12px] text-[var(--ink-faint)] mt-3">
-                Please record for at least 1 minute. ({60 - duration}s remaining)
+                Please record for at least 30 seconds. ({30 - duration}s remaining)
               </p>
             )}
           </div>
@@ -555,7 +573,7 @@ export default function IntroVideoStep({
                 <p className="text-xs text-[var(--ink-faint)] mt-0.5">Duration: {formatTime(duration)}</p>
               </div>
               <div className="flex items-center gap-1.5">
-                {duration >= 60 && duration <= 120 ? (
+                {duration >= 30 && duration <= 120 ? (
                   <span className="text-xs font-bold text-[var(--success)] flex items-center gap-1 bg-[var(--success-soft)] px-2 py-1 rounded-md">
                     <Check className="w-3.5 h-3.5" /> Valid
                   </span>

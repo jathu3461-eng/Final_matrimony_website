@@ -15,6 +15,7 @@ const {
   VIDEO_MIME_BY_EXTENSION,
   createUploadError,
   getSafeVideoName,
+  validateIntroVideoDuration,
   validateVideoMetadata,
   createUploadId,
   assembleVideoChunks,
@@ -25,7 +26,11 @@ const {
 const router = express.Router();
 
 function getOptionalUser(req) {
-  const token = req.cookies?.auth_token;
+  // Website sends an auth cookie; the mobile app sends "Authorization: Bearer <token>".
+  const header = req.headers?.authorization;
+  const token = header && header.startsWith('Bearer ')
+    ? header.slice(7).trim()
+    : req.cookies?.auth_token;
   if (!token) return null;
   try { return jwt.verify(token, JWT_SECRET); } catch (e) { return null; }
 }
@@ -688,8 +693,9 @@ router.post('/:id/intro-video', requireAuth, uploadVideoMiddleware, async (req, 
       uploadedAt: new Date().toISOString(),
       linked: true,
       profileId: existing.id,
+      durationSeconds: validateIntroVideoDuration(req.body.duration_seconds),
     };
-    const duration = Math.max(0, Number.parseInt(req.body.duration_seconds, 10) || 0);
+    const duration = Math.floor(savedMetadata.durationSeconds);
 
     if (!fs.existsSync(metadataPath)) {
       await fs.promises.writeFile(metadataPath, JSON.stringify({ ...savedMetadata, linked: false }), { flag: 'wx' });

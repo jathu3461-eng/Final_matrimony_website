@@ -232,7 +232,7 @@ export const profileSteps: ProfileStepDef[] = [
   { key: 'location', title: 'Location', hint: 'Where you were born and live now', icon: 'location', fields: ['born_country_id', 'current_country_id', 'city_or_state'] },
   { key: 'media', title: 'Photos & Privacy', hint: 'Upload media and set privacy', icon: 'camera', fields: ['blur_photo', 'blur_horoscope'] },
   { key: 'bio', title: 'Bio & Review', hint: 'Tell your story', icon: 'document-text', fields: ['about_me'] },
-  { key: 'video', title: 'Introduction Video', hint: 'Upload a 1-2 min private intro video', icon: 'videocam', fields: ['intro_video_status'] },
+  { key: 'video', title: 'Introduction Video', hint: 'Upload a private intro video between 30 seconds and 2 minutes', icon: 'videocam', fields: ['intro_video_status'] },
 ];
 
 // ── Step validation (mirrors website's Zod schemas) ──────────────────────────

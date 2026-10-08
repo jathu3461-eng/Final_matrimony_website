@@ -7,6 +7,7 @@ const {
   MIN_INTRO_VIDEO_SIZE,
   MAX_INTRO_VIDEO_SIZE,
   VIDEO_CHUNK_SIZE,
+  validateIntroVideoDuration,
   validateVideoMetadata,
   assembleVideoChunks,
 } = require('./introVideoStorage');
@@ -31,6 +32,14 @@ test('accepts the 1 MB minimum and 3 GB maximum', () => {
 test('rejects videos below 1 MB and above 3 GB with specific errors', () => {
   assert.throws(() => validateVideoMetadata(metadata({ fileSize: MIN_INTRO_VIDEO_SIZE - 1 })), /at least 1 MB/);
   assert.throws(() => validateVideoMetadata(metadata({ fileSize: MAX_INTRO_VIDEO_SIZE + 1 })), /must not exceed 3 GB/);
+});
+
+test('accepts exact 30–120 second video durations without rounding', () => {
+  for (const duration of [30, 45, 67, 119, 119.9, 120]) {
+    assert.equal(validateIntroVideoDuration(duration), duration);
+  }
+  assert.throws(() => validateIntroVideoDuration(29.9), /at least 30 seconds long/);
+  assert.throws(() => validateIntroVideoDuration(120.1), /must not exceed 2 minutes/);
 });
 
 test('accepts supported containers using their file signature and fallback MIME', () => {

@@ -1,5 +1,7 @@
 import api from './client';
-import { File } from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
+import { API_BASE_URL } from './client';
+import { tokenStorage } from '@/services/tokenStorage';
 import type { Profile, ProfileMeta } from '@/types';
 
 const VIDEO_CHUNK_SIZE = 512 * 1024;
@@ -10,44 +12,21 @@ const VIDEO_EXTENSIONS = new Set([
   '.mkv', '.mod', '.mov', '.mp4', '.mpe', '.mpeg', '.mpg', '.mts', '.ogv', '.ts', '.vob',
   '.webm', '.wmv', '.xvid',
 ]);
+const VIDEO_MIME_BY_EXTENSION: Record<string, string> = {
+  '.3g2': 'video/3gpp2', '.3gp': 'video/3gpp', '.avi': 'video/x-msvideo', '.flv': 'video/x-flv',
+  '.m4v': 'video/x-m4v', '.mkv': 'video/x-matroska', '.mov': 'video/quicktime', '.mp4': 'video/mp4',
+  '.mpeg': 'video/mpeg', '.mpg': 'video/mpeg', '.webm': 'video/webm', '.wmv': 'video/x-ms-wmv',
+};
 const activeVideoUploads = new Map<string, string>();
 
 type UploadProgress = (percent: number, uploadedBytes: number, totalBytes: number) => void;
 
-function getVideoSignatureFormat(header: Uint8Array): string | null {
-  const ascii = (start: number, end: number) => String.fromCharCode(...header.slice(start, end));
-  if (header.length >= 12 && ascii(4, 8) === 'ftyp') return 'isobmff';
-  if (header.length >= 12 && ascii(0, 4) === 'RIFF' && ascii(8, 12) === 'AVI ') return 'avi';
-  if (header.length >= 4 && header[0] === 0x1a && header[1] === 0x45 && header[2] === 0xdf && header[3] === 0xa3) {
-    const marker = ascii(0, header.length).toLowerCase();
-    return marker.includes('webm') ? 'webm' : marker.includes('matroska') ? 'matroska' : 'ebml';
-  }
-  if (header.length >= 3 && ascii(0, 3) === 'FLV') return 'flv';
-  if (header.length >= 16 && Array.from(header.slice(0, 16)).map((byte) => byte.toString(16).padStart(2, '0')).join('') === '3026b2758e66cf11a6d900aa0062ce6c') return 'asf';
-  if (header.length >= 4 && header[0] === 0 && header[1] === 0 && header[2] === 1 && [0xb3, 0xba, 0xb8].includes(header[3])) return 'mpeg';
-  return null;
-}
-
-function isSignatureCompatible(extension: string, format: string | null) {
-  if (format === 'isobmff') return ['.mp4', '.mov', '.m4v', '.3gp', '.3g2'].includes(extension);
-  if (format === 'avi') return ['.avi', '.divx', '.xvid'].includes(extension);
-  if (format === 'matroska' || format === 'ebml') return ['.mkv', '.webm'].includes(extension);
-  if (format === 'webm') return extension === '.webm';
-  if (format === 'flv') return extension === '.flv';
-  if (format === 'asf') return ['.asf', '.wmv'].includes(extension);
-  if (format === 'mpeg') return ['.mpeg', '.mpg', '.mpe', '.m2v', '.vob', '.mod'].includes(extension);
-  return false;
-}
-
-function validateIntroVideo(name: string, mimeType: string, size: number, signature: Uint8Array) {
+function validateIntroVideo(name: string, mimeType: string, size: number) {
   if (size < MIN_INTRO_VIDEO_SIZE) throw new Error('Video must be at least 1 MB.');
   if (size > MAX_INTRO_VIDEO_SIZE) throw new Error('Video size must not exceed 3 GB.');
   const extension = name.slice(name.lastIndexOf('.')).toLowerCase();
   if (!VIDEO_EXTENSIONS.has(extension)) throw new Error('This video format is not supported.');
   if (/^(text\/|image\/|application\/(x-msdownload|x-executable|x-sh|x-bat|javascript|x-javascript|x-httpd-php))/i.test(mimeType)) {
-    throw new Error('This video format is not supported.');
-  }
-  if (!isSignatureCompatible(extension, getVideoSignatureFormat(signature))) {
     throw new Error('This video format is not supported.');
   }
 }
@@ -58,8 +37,11 @@ function videoUploadError(error: any): Error {
   if (status === 401) return new Error('Your session has expired. Please log in again.');
   if (responseMessage) return new Error(String(responseMessage));
   if (status >= 500) return new Error('Unable to upload the video right now. Please try again.');
-  if (error?.code === 'ERR_NETWORK' || error?.code === 'ECONNABORTED' || !error?.response) {
+  if (error?.code === 'ERR_NETWORK' || error?.code === 'ECONNABORTED') {
     return new Error('Upload interrupted. Check your connection and try again.');
+  }
+  if (!error?.response) {
+    return new Error(`Upload Failed Local Error: ${error?.message || error || 'Unknown'}`);
   }
   return new Error(error?.message || 'Unable to upload the video right now. Please try again.');
 }
@@ -68,21 +50,45 @@ function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function buildChunkUrl(metadata: Record<string, string | number>, chunkIndex: number) {
+  const query = new URLSearchParams({ ...metadata, chunkIndex: String(chunkIndex) }).toString();
+  return `${API_BASE_URL.replace(/\/$/, '')}/profiles/upload-chunk?${query}`;
+}
+
+function parseNativeUploadError(body: string, status: number) {
+  try {
+    const response = JSON.parse(body);
+    return Object.assign(new Error(response.error || response.message || `Upload failed (${status}).`), {
+      response: { status, data: response },
+    });
+  } catch {
+    return Object.assign(new Error(`Upload failed (${status}).`), { response: { status } });
+  }
+}
+
 async function uploadIntroVideoTempFile(
   fileUri: string,
   fileName: string,
   onProgress?: UploadProgress,
   mimeType?: string | null,
 ): Promise<string> {
-  const sourceFile = new File(fileUri);
-  if (!sourceFile.exists) throw new Error('The selected video cannot be read. Please select it again.');
-  const fileSize = sourceFile.size;
-  const safeName = fileName || sourceFile.name;
-  const resolvedMimeType = mimeType || sourceFile.type || '';
+  const sourceInfo = await FileSystem.getInfoAsync(fileUri);
+  if (!sourceInfo.exists || sourceInfo.isDirectory) throw new Error('The selected video cannot be read. Please select it again.');
+  const fileSize = sourceInfo.size || 0;
+  
+  // Extract filename from URI if not provided
+  let defaultName = 'video.mp4';
+  if (fileUri.includes('/')) {
+    defaultName = fileUri.split('/').pop() || 'video.mp4';
+  }
+  const safeName = fileName || defaultName;
+  const extension = safeName.slice(safeName.lastIndexOf('.')).toLowerCase();
+  const resolvedMimeType = mimeType && mimeType !== 'application/octet-stream'
+    ? mimeType
+    : VIDEO_MIME_BY_EXTENSION[extension] || '';
   if (fileSize < MIN_INTRO_VIDEO_SIZE) throw new Error('Video must be at least 1 MB.');
   if (fileSize > MAX_INTRO_VIDEO_SIZE) throw new Error('Video size must not exceed 3 GB.');
-  const signature = new Uint8Array(await sourceFile.slice(0, 4096).arrayBuffer());
-  validateIntroVideo(safeName, resolvedMimeType, fileSize, signature);
+  validateIntroVideo(safeName, resolvedMimeType, fileSize);
 
   const totalChunks = Math.ceil(fileSize / VIDEO_CHUNK_SIZE);
   const fingerprint = `${fileUri}|${safeName}|${fileSize}`;
@@ -122,31 +128,70 @@ async function uploadIntroVideoTempFile(
     onProgress?.(Math.min(100, Math.floor((uploadedBytes / fileSize) * 100)), uploadedBytes, fileSize);
   };
 
+  const safeDeleteFile = async (uri: string) => {
+    try {
+      const info = await FileSystem.getInfoAsync(uri);
+      if (info.exists) {
+        await FileSystem.deleteAsync(uri, { idempotent: true });
+      }
+    } catch (err) {
+      console.warn('[video-upload] Temporary chunk already removed or cannot be deleted:', uri, err);
+    }
+  };
+
   const uploadChunk = async (chunkIndex: number) => {
     if (receivedChunks.has(chunkIndex)) return;
     const start = chunkIndex * VIDEO_CHUNK_SIZE;
     const chunkBytes = Math.min(VIDEO_CHUNK_SIZE, fileSize - start);
     for (let attempt = 0; attempt < 3; attempt += 1) {
-      const formData = new FormData();
-      formData.append('chunk', sourceFile.slice(start, start + chunkBytes, resolvedMimeType), safeName);
+      const chunkUri = `${FileSystem.cacheDirectory}mukurtham-video-upload-chunks/${uploadId}-${chunkIndex}.part`;
+      let uploadTask: FileSystem.UploadTask | null = null;
       try {
-        await api.post('/profiles/upload-chunk', formData, {
-          params: {
-            uploadId,
-            chunkIndex,
-            totalChunks,
-            fileName: safeName,
-            fileSize,
-            mimeType: resolvedMimeType,
-          },
-          headers: { 'Content-Type': 'multipart/form-data' },
-          timeout: 120000,
-          maxBodyLength: VIDEO_CHUNK_SIZE + 64 * 1024,
-          onUploadProgress: (event) => {
-            activeChunkBytes.set(chunkIndex, Math.min(chunkBytes, event.loaded));
-            reportProgress();
-          },
+        const dirInfo = await FileSystem.getInfoAsync(`${FileSystem.cacheDirectory}mukurtham-video-upload-chunks/`);
+        if (!dirInfo.exists) {
+          await FileSystem.makeDirectoryAsync(`${FileSystem.cacheDirectory}mukurtham-video-upload-chunks/`, { intermediates: true });
+        }
+
+        const base64Chunk = await FileSystem.readAsStringAsync(fileUri, {
+          encoding: FileSystem.EncodingType.Base64,
+          position: start,
+          length: chunkBytes,
         });
+        await FileSystem.writeAsStringAsync(chunkUri, base64Chunk, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+
+        const accessToken = await tokenStorage.getAccessToken();
+        const url = buildChunkUrl(metadataParams, chunkIndex);
+
+        uploadTask = FileSystem.createUploadTask(
+          url,
+          chunkUri,
+          {
+            uploadType: FileSystem.FileSystemUploadType.MULTIPART,
+            fieldName: 'chunk',
+            mimeType: resolvedMimeType || 'application/octet-stream',
+            httpMethod: 'POST',
+            headers: {
+              ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+              'Bypass-Tunnel-Reminder': 'true',
+              'User-Agent': 'MukurthamMobileApp/1.0'
+            },
+          },
+          (progress: any) => {
+            activeChunkBytes.set(chunkIndex, Math.min(chunkBytes, progress.totalBytesSent));
+            reportProgress();
+          }
+        );
+
+        const result = await uploadTask.uploadAsync();
+        if (!result || result.status < 200 || result.status >= 300) {
+          if (result?.status === 401) {
+            await api.get(`/profiles/upload-status/${uploadId}`, { params: metadataParams });
+            throw Object.assign(new Error('Retrying with the refreshed session.'), { retryableAuth: true });
+          }
+          throw parseNativeUploadError(result?.body || '', result?.status || 0);
+        }
         activeChunkBytes.delete(chunkIndex);
         settledBytes += chunkBytes;
         reportProgress();
@@ -155,9 +200,11 @@ async function uploadIntroVideoTempFile(
         activeChunkBytes.delete(chunkIndex);
         reportProgress();
         const status = error?.response?.status;
-        const retryable = !status || status === 408 || status === 429 || status >= 500;
+        const retryable = error?.retryableAuth || !status || status === 408 || status === 429 || status >= 500;
         if (!retryable || attempt === 2) throw videoUploadError(error);
         await wait(500 * (attempt + 1));
+      } finally {
+        await safeDeleteFile(chunkUri);
       }
     }
   };
@@ -184,6 +231,7 @@ async function uploadIntroVideoTempFile(
     }, { timeout: 30 * 60 * 1000 });
     reportProgress();
     activeVideoUploads.delete(fingerprint);
+    await FileSystem.deleteAsync(`${FileSystem.cacheDirectory}mukurtham-video-upload-chunks/`, { idempotent: true }).catch(() => {});
     return data.temp_video_key;
   } catch (error) {
     const status = (error as any)?.response?.status;
@@ -192,6 +240,7 @@ async function uploadIntroVideoTempFile(
     if (!canResume) {
       await api.delete(`/profiles/upload-chunks/${uploadId}`, { timeout: 20000 }).catch(() => {});
       activeVideoUploads.delete(fingerprint);
+      await FileSystem.deleteAsync(`${FileSystem.cacheDirectory}mukurtham-video-upload-chunks/`, { idempotent: true }).catch(() => {});
     }
     throw error instanceof Error && !('response' in error)
       ? error

@@ -46,6 +46,10 @@ app.use(cors({
   },
   credentials: true,
 }));
+app.use((req, res, next) => {
+  console.log(`[Backend] => ${req.method} ${req.url}`);
+  next();
+});
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true, limit: '5mb' }));
 app.use(cookieParser());

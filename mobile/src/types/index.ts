@@ -68,6 +68,9 @@ export interface Profile {
   interest_status?: string | null;
   interest_direction?: string | null;
   interest_id?: number | null;
+  has_intro_video?: boolean;
+  intro_video_status?: 'pending' | 'approved' | 'rejected' | null;
+  intro_video_duration?: number | null;
 }
 
 export interface ProfileMeta {

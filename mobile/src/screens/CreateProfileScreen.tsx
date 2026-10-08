@@ -15,6 +15,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from '@/components/Button';
 import { FormField } from '@/components/FormField';
+import { DatePickerField } from '@/components/DatePickerField';
 import { Screen } from '@/components/Screen';
 import { SelectField } from '@/components/SelectField';
 import { SearchableSelect } from '@/components/SearchableSelect';
@@ -161,6 +162,10 @@ export function CreateProfileScreen() {
   };
 
   const submit = async () => {
+    if (introVideoUri && !introVideoTempKey) {
+      Alert.alert('Video upload', 'The video is valid but not uploaded yet. Retry the upload before publishing.');
+      return;
+    }
     const allErrors = profileSteps.map((_, i) => validateProfileStep(i, form));
     const firstBad = allErrors.findIndex((e) => Object.keys(e).length > 0);
     if (firstBad !== -1) {
@@ -297,15 +302,11 @@ export function CreateProfileScreen() {
               <Text style={[styles.errorInline, { color: colors.error }]}>{stepErrors.gender}</Text>
             )}
 
-            <FormField
+            <DatePickerField
               label="Date of Birth"
               value={form.date_of_birth}
               onChangeText={set('date_of_birth')}
               onBlur={blur('date_of_birth')}
-              placeholder="YYYY-MM-DD (e.g. 1995-06-15)"
-              keyboardType="numbers-and-punctuation"
-              maxLength={10}
-              count
               error={touched.date_of_birth ? stepErrors.date_of_birth : null}
               hint={touched.date_of_birth ? undefined : 'Must be 18 years or older'}
             />
@@ -620,16 +621,20 @@ export function CreateProfileScreen() {
                 setIntroVideoDuration(duration);
                 setIntroVideoTempKey(tempKey || null);
                 setForm((f) => {
-                  const nextStatus = tempKey
-                    ? 'selected'
+                  const nextStatus = tempKey || state === 'uploaded'
+                    ? 'uploaded'
                     : state === 'uploading'
                       ? 'uploading'
-                      : f.intro_video_status === 'uploaded'
-                        ? 'uploaded'
-                        : '';
+                      : state === 'valid' || state === 'uploadFailed' || state === 'validating'
+                        ? 'selected'
+                        : state === 'invalid'
+                          ? ''
+                          : f.intro_video_status === 'uploaded'
+                            ? 'uploaded'
+                            : '';
                   return { ...f, intro_video_status: nextStatus };
                 });
-                if (state === 'uploading' || tempKey || state === 'error') {
+                if (state === 'uploading' || tempKey || state === 'uploaded' || state === 'invalid' || state === 'uploadFailed') {
                   setTouched((t) => ({ ...t, intro_video_status: true }));
                 }
               }}

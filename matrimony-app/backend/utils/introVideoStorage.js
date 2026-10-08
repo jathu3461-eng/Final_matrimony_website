@@ -6,6 +6,8 @@ const { pipeline } = require('stream/promises');
 
 const MIN_INTRO_VIDEO_SIZE = 1 * 1024 * 1024;
 const MAX_INTRO_VIDEO_SIZE = 3 * 1024 * 1024 * 1024;
+const MIN_INTRO_VIDEO_DURATION_SECONDS = 30;
+const MAX_INTRO_VIDEO_DURATION_SECONDS = 120;
 const VIDEO_CHUNK_SIZE = 512 * 1024;
 const VIDEO_MIME_BY_EXTENSION = {
   '.3g2': 'video/3gpp2',
@@ -40,6 +42,20 @@ function createUploadError(message, status = 400, code = 'INVALID_VIDEO') {
   error.status = status;
   error.code = code;
   return error;
+}
+
+function validateIntroVideoDuration(durationSeconds) {
+  const duration = Number(durationSeconds);
+  if (!Number.isFinite(duration)) {
+    throw createUploadError('Unable to read video duration.', 400, 'VIDEO_DURATION_INVALID');
+  }
+  if (duration < MIN_INTRO_VIDEO_DURATION_SECONDS) {
+    throw createUploadError('Video must be at least 30 seconds long.', 400, 'VIDEO_TOO_SHORT');
+  }
+  if (duration > MAX_INTRO_VIDEO_DURATION_SECONDS) {
+    throw createUploadError('Video must not exceed 2 minutes.', 400, 'VIDEO_TOO_LONG');
+  }
+  return duration;
 }
 
 function getSafeVideoName(fileName) {
@@ -205,6 +221,9 @@ async function cleanupExpiredVideoUploads(tempDirectory, permanentDirectory, isR
 module.exports = {
   MIN_INTRO_VIDEO_SIZE,
   MAX_INTRO_VIDEO_SIZE,
+  MIN_INTRO_VIDEO_DURATION_SECONDS,
+  MAX_INTRO_VIDEO_DURATION_SECONDS,
+  validateIntroVideoDuration,
   VIDEO_CHUNK_SIZE,
   VIDEO_MIME_BY_EXTENSION,
   createUploadError,

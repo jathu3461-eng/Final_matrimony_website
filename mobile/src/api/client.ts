@@ -10,7 +10,11 @@ export const API_BASE_URL =
 const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 20000,
-  headers: { 'Content-Type': 'application/json' },
+  headers: { 
+    'Content-Type': 'application/json',
+    'Bypass-Tunnel-Reminder': 'true',
+    'User-Agent': 'MukurthamMobileApp/1.0'
+  },
 });
 
 // Inject the access token on every request when available.

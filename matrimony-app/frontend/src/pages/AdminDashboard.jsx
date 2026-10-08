@@ -161,7 +161,7 @@ export default function AdminDashboard() {
               {section === 'users' && <UsersManagement />}
               {section === 'brokers' && <BrokerApprovals />}
               {section === 'profiles' && <ProfilesVerification />}
-              {section === 'videos' && <VideoReviews />}
+              {section === 'videos' && <video crossOrigin="use-credentials"Reviews />}
               {section === 'settings' && <SiteSettings />}
               {section === 'menu' && <MenuEditor />}
             </motion.div>
@@ -675,7 +675,7 @@ function VideoReviews() {
         <div>
           <h3 className="font-display text-base font-extrabold text-slate-800">Introduction Videos</h3>
           <p className="text-[11px] text-slate-400 font-medium">
-            Review private mandatory introduction videos. Ensure they are 1-3 minutes long and authentic.
+            Review private mandatory introduction videos. Ensure they are 30 seconds to 2 minutes long and authentic.
           </p>
         </div>
         <span className="text-[11px] font-bold px-3 py-1 rounded-full bg-amber-50 text-amber-600 border border-amber-200">
@@ -709,7 +709,7 @@ function VideoReviews() {
                     >Open original video</a>
                   </div>
                 ) : (
-                  <video
+                  <video crossOrigin="use-credentials"
                     src={apiUrl(`/profiles/${p.id}/intro-video-stream`)}
                     controls
                     controlsList="nodownload"

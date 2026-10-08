@@ -11,6 +11,7 @@ import { uploadsUrl, extractError } from '@/api/client';
 import { Button } from '@/components/Button';
 import { Spinner } from '@/components/Spinner';
 import { Screen } from '@/components/Screen';
+import { IntroVideoPlayer } from '@/components/IntroVideoPlayer';
 import { useAppSelector } from '@/store/hooks';
 import { useTheme } from '@/theme';
 import { radius, spacing, typography, layout } from '@/theme';
@@ -277,6 +278,17 @@ export function ProfileDetailScreen() {
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: colors.inkFaint }]}>About</Text>
             <Text style={[styles.aboutText, { color: colors.ink }]}>{p.about_me}</Text>
+          </View>
+        ) : null}
+
+        {p.has_intro_video && p.intro_video_status ? (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.inkFaint }]}>Intro Video</Text>
+            <IntroVideoPlayer 
+              profileId={p.id} 
+              status={p.intro_video_status} 
+              durationSeconds={p.intro_video_duration} 
+            />
           </View>
         ) : null}
 

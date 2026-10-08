@@ -7,11 +7,17 @@ import { Ionicons } from '@expo/vector-icons';
 import { extractError } from '@/api/client';
 import { profileApi } from '@/api/profiles';
 import { useTheme } from '@/theme';
+import { formatIntroVideoDuration, getIntroVideoDurationError } from '@/utils/introVideoDuration';
 import { Button } from './Button';
 
-type IntroVideoUploadState = 'idle' | 'uploading' | 'selected' | 'error';
+type IntroVideoUploadState = 'idle' | 'validating' | 'valid' | 'uploading' | 'uploaded' | 'uploadFailed' | 'invalid';
 const MIN_VIDEO_SIZE = 1 * 1024 * 1024;
 const MAX_VIDEO_SIZE = 3 * 1024 * 1024 * 1024;
+const SUPPORTED_VIDEO_EXTENSIONS = new Set([
+  '.3g2', '.3gp', '.asf', '.avi', '.divx', '.f4v', '.flv', '.m2t', '.m2ts', '.m2v', '.m4v',
+  '.mkv', '.mod', '.mov', '.mp4', '.mpe', '.mpeg', '.mpg', '.mts', '.ogv', '.ts', '.vob',
+  '.webm', '.wmv', '.xvid',
+]);
 
 interface IntroVideoPickerProps {
   hasExisting?: boolean;
@@ -35,6 +41,7 @@ export function IntroVideoPicker({ hasExisting, error, onVideoSelected }: IntroV
   const { colors } = useTheme();
   const [videoUri, setVideoUri] = useState<string | null>(null);
   const [duration, setDuration] = useState<number>(0);
+  const [videoValidity, setVideoValidity] = useState<'checking' | 'valid' | 'invalid'>('checking');
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadBytes, setUploadBytes] = useState(0);
@@ -45,30 +52,13 @@ export function IntroVideoPicker({ hasExisting, error, onVideoSelected }: IntroV
   const [videoMimeType, setVideoMimeType] = useState<string | null>(null);
   const uploadTokenRef = useRef<string | null>(null);
   const durationRef = useRef(0);
-  const uploadFallbackRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const formatTime = (secs: number) => {
-    const m = Math.floor(secs / 60);
-    const s = Math.round(secs % 60);
-    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-  };
+  const formatTime = formatIntroVideoDuration;
 
   const formatBytes = (bytes: number) => {
     if (bytes >= 1024 ** 3) return `${(bytes / 1024 ** 3).toFixed(1)} GB`;
     if (bytes >= 1024 ** 2) return `${(bytes / 1024 ** 2).toFixed(1)} MB`;
     return `${(bytes / 1024).toFixed(0)} KB`;
-  };
-
-  const validateDuration = (durationSecs: number) => {
-    if (durationSecs < 60) {
-      Alert.alert('Invalid Duration', 'Your introduction video must be at least 1 minute long.');
-      return false;
-    }
-    if (durationSecs > 120) {
-      Alert.alert('Invalid Duration', 'Your introduction video must not exceed 2 minutes.');
-      return false;
-    }
-    return true;
   };
 
   const uploadSelectedVideo = async (
@@ -77,15 +67,16 @@ export function IntroVideoPicker({ hasExisting, error, onVideoSelected }: IntroV
     mimeType?: string | null,
     originalName?: string | null,
   ) => {
-    if (durationSecs > 0 && !validateDuration(durationSecs)) {
-      onVideoSelected(null, 0, null, 'error');
+    const durationError = getIntroVideoDurationError(durationSecs);
+    if (durationError) {
+      setVideoValidity('invalid');
+      setUploadError(durationError);
+      onVideoSelected(uri, durationSecs, null, 'invalid');
       return;
     }
 
     if (uploadTokenRef.current?.startsWith(`${uri}:`)) return;
 
-    if (uploadFallbackRef.current) clearTimeout(uploadFallbackRef.current);
-    uploadFallbackRef.current = null;
     uploadTokenRef.current = `${uri}:${durationSecs}`;
     setUploading(true);
     setUploadProgress(0);
@@ -102,21 +93,27 @@ export function IntroVideoPicker({ hasExisting, error, onVideoSelected }: IntroV
         (percent, uploadedBytes, totalBytes) => {
           setUploadProgress(percent);
           setUploadBytes(uploadedBytes);
-          setUploadTotalBytes(totalBytes);
+          if (totalBytes > 0) setUploadTotalBytes(totalBytes);
         },
       );
       setTempVideoKey(key);
       setUploadProgress(100);
-      const finalDuration = durationRef.current || durationSecs;
-      setDuration(finalDuration);
-      onVideoSelected(uri, finalDuration, key, 'selected');
+      setUploadError('');
+      setVideoValidity('valid');
+      setDuration(durationSecs);
+      durationRef.current = durationSecs;
+      onVideoSelected(uri, durationSecs, key, 'uploaded');
     } catch (err) {
       const message = err instanceof Error
         ? err.message
         : extractError(err, 'Unable to upload the video right now. Please try again.');
       setUploadError(message);
       uploadTokenRef.current = null;
-      onVideoSelected(uri, durationRef.current || durationSecs, null, 'error');
+      const rejectedVideo = message === 'This video format is not supported.'
+        || message === 'Video must be at least 1 MB.'
+        || message === 'Video size must not exceed 3 GB.';
+      setVideoValidity(rejectedVideo ? 'invalid' : 'valid');
+      onVideoSelected(uri, durationSecs, null, rejectedVideo ? 'invalid' : 'uploadFailed');
     } finally {
       setUploading(false);
     }
@@ -137,7 +134,14 @@ export function IntroVideoPicker({ hasExisting, error, onVideoSelected }: IntroV
       Alert.alert('Video too large', 'Video size must not exceed 3 GB.');
       return;
     }
-    if (durationSecs > 0 && !validateDuration(durationSecs)) return;
+    const safeName = fileName.split(/[\\/]/).pop() || getVideoFileName(uri);
+    const extension = safeName.slice(safeName.lastIndexOf('.')).toLowerCase();
+    if (!SUPPORTED_VIDEO_EXTENSIONS.has(extension)
+      || /^(text\/|image\/|application\/(x-msdownload|x-executable|x-sh|x-bat|javascript|x-javascript|x-httpd-php))/i.test(mimeType || '')) {
+      Alert.alert('Unsupported video', 'This video format is not supported.');
+      return;
+    }
+    const durationError = durationSecs > 0 ? getIntroVideoDurationError(durationSecs) : null;
 
     uploadTokenRef.current = null;
     setUploadError('');
@@ -146,17 +150,20 @@ export function IntroVideoPicker({ hasExisting, error, onVideoSelected }: IntroV
     setUploadTotalBytes(fileSize || 0);
     setTempVideoKey(null);
     setVideoUri(uri);
-    setVideoFileName(fileName);
+    setVideoValidity(durationSecs > 0 ? 'valid' : 'checking');
+    setVideoFileName(safeName);
     setVideoMimeType(mimeType || null);
     setDuration(durationSecs);
     durationRef.current = durationSecs;
-    onVideoSelected(uri, durationSecs, null, 'idle');
+    if (durationError) {
+      setVideoValidity('invalid');
+      setUploadError(durationError);
+      onVideoSelected(uri, durationSecs, null, 'invalid');
+      return;
+    }
+    onVideoSelected(uri, durationSecs, null, durationSecs > 0 ? 'valid' : 'validating');
     if (durationSecs > 0) {
-      await uploadSelectedVideo(uri, durationSecs, mimeType, fileName);
-    } else {
-      uploadFallbackRef.current = setTimeout(() => {
-        void uploadSelectedVideo(uri, 0, mimeType, fileName);
-      }, 3000);
+      await uploadSelectedVideo(uri, durationSecs, mimeType, safeName);
     }
   };
 
@@ -175,7 +182,7 @@ export function IntroVideoPicker({ hasExisting, error, onVideoSelected }: IntroV
 
       if (!res.canceled && res.assets[0]) {
         const asset = res.assets[0];
-        const durationSecs = asset.duration ? Math.round(asset.duration / 1000) : 0;
+        const durationSecs = asset.duration ? asset.duration / 1000 : 0;
         await useSelectedVideo(
           asset.uri,
           asset.fileName || getVideoFileName(asset.uri),
@@ -210,11 +217,10 @@ export function IntroVideoPicker({ hasExisting, error, onVideoSelected }: IntroV
 
   const resetSelection = () => {
     uploadTokenRef.current = null;
-    if (uploadFallbackRef.current) clearTimeout(uploadFallbackRef.current);
-    uploadFallbackRef.current = null;
     setVideoUri(null);
     setDuration(0);
     durationRef.current = 0;
+    setVideoValidity('checking');
     setUploading(false);
     setUploadProgress(0);
     setUploadBytes(0);
@@ -235,7 +241,7 @@ export function IntroVideoPicker({ hasExisting, error, onVideoSelected }: IntroV
         <View style={styles.headerText}>
           <Text style={[styles.title, { color: colors.ink }]}>Introduction Video</Text>
           <Text style={[styles.subtitle, { color: colors.inkSoft }]}>
-            Any video format up to 3 GB. The video must be between 1 and 2 minutes.
+            Any video format up to 3 GB. The video must be between 30 seconds and 2 minutes.
           </Text>
         </View>
       </View>
@@ -292,31 +298,33 @@ export function IntroVideoPicker({ hasExisting, error, onVideoSelected }: IntroV
               useNativeControls
               resizeMode={ResizeMode.CONTAIN}
               onLoad={(status) => {
-                if (status.isLoaded && status.durationMillis) {
-                  const s = Math.round(status.durationMillis / 1000);
-                  if (!validateDuration(s)) {
-                    onVideoSelected(videoUri, s, null, 'error');
-                    setUploadError(s < 60
-                      ? 'Your introduction video must be at least 1 minute long.'
-                      : 'Your introduction video must not exceed 2 minutes.');
+                if (status.isLoaded && typeof status.durationMillis === 'number' && status.durationMillis > 0) {
+                  const seconds = status.durationMillis / 1000;
+                  const durationError = getIntroVideoDurationError(seconds);
+                  if (durationError) {
+                    setVideoValidity('invalid');
+                    setUploadError(durationError);
+                    onVideoSelected(videoUri, seconds, null, 'invalid');
                     return;
                   }
-                  if (uploadFallbackRef.current) clearTimeout(uploadFallbackRef.current);
-                  uploadFallbackRef.current = null;
-                  setDuration(s);
-                  durationRef.current = s;
+                  setVideoValidity('valid');
+                  setUploadError('');
+                  setDuration(seconds);
+                  durationRef.current = seconds;
                   if (tempVideoKey) {
-                    onVideoSelected(videoUri, s, tempVideoKey, 'selected');
+                    onVideoSelected(videoUri, seconds, tempVideoKey, 'uploaded');
                   } else if (!uploadTokenRef.current?.startsWith(`${videoUri}:`)) {
-                    uploadSelectedVideo(videoUri, s, videoMimeType, videoFileName);
+                    uploadSelectedVideo(videoUri, seconds, videoMimeType, videoFileName);
+                  } else {
+                    onVideoSelected(videoUri, seconds, null, 'uploading');
                   }
                 }
               }}
               onError={() => {
-                if (uploadFallbackRef.current) clearTimeout(uploadFallbackRef.current);
-                uploadFallbackRef.current = null;
-                if (!uploadTokenRef.current?.startsWith(`${videoUri}:`)) {
-                  void uploadSelectedVideo(videoUri, 0, videoMimeType, videoFileName);
+                if (!durationRef.current) {
+                  setUploadError('Unable to read video duration on this device. Choose a video the player can inspect.');
+                  setVideoValidity('checking');
+                  onVideoSelected(videoUri, 0, null, 'validating');
                 }
               }}
             />
@@ -341,20 +349,27 @@ export function IntroVideoPicker({ hasExisting, error, onVideoSelected }: IntroV
               <Text style={[styles.previewDuration, { color: colors.inkFaint }]}>Duration: {formatTime(duration)}</Text>
             </View>
             <View>
-              {uploading ? (
+              {videoValidity === 'valid' ? (
+                <View style={[styles.badge, { backgroundColor: colors.successSoft }]}> 
+                  <Ionicons name="checkmark" size={14} color={colors.success} />
+                  <Text style={[styles.badgeText, { color: colors.success }]}>
+                    {tempVideoKey ? 'Valid · Uploaded' : uploadError ? 'Valid · Upload failed' : 'Valid'}
+                  </Text>
+                </View>
+              ) : uploading ? (
                 <View style={[styles.badge, { backgroundColor: colors.primarySoft }]}>
                   <ActivityIndicator color={colors.primaryDark} size="small" />
                   <Text style={[styles.badgeText, { color: colors.primaryDark }]}>Uploading</Text>
                 </View>
-              ) : tempVideoKey && duration >= 60 && duration <= 120 ? (
-                <View style={[styles.badge, { backgroundColor: colors.successSoft }]}>
-                  <Ionicons name="checkmark" size={14} color={colors.success} />
-                  <Text style={[styles.badgeText, { color: colors.success }]}>Valid</Text>
-                </View>
-              ) : (
+              ) : videoValidity === 'invalid' ? (
                 <View style={[styles.badge, { backgroundColor: colors.errorSoft }]}>
                   <Ionicons name="close" size={14} color={colors.error} />
                   <Text style={[styles.badgeText, { color: colors.error }]}>Invalid</Text>
+                </View>
+              ) : (
+                <View style={[styles.badge, { backgroundColor: colors.primarySoft }]}>
+                  <ActivityIndicator color={colors.primaryDark} size="small" />
+                  <Text style={[styles.badgeText, { color: colors.primaryDark }]}>Checking duration</Text>
                 </View>
               )}
             </View>
@@ -371,7 +386,16 @@ export function IntroVideoPicker({ hasExisting, error, onVideoSelected }: IntroV
               title="Retry upload"
               variant="secondary"
               leftIcon="refresh"
-              onPress={() => uploadSelectedVideo(videoUri, duration, videoMimeType, videoFileName)}
+              onPress={() => {
+                const durationError = getIntroVideoDurationError(duration);
+                if (durationError) {
+                  setUploadError(durationError);
+                  setVideoValidity('invalid');
+                  return;
+                }
+                void uploadSelectedVideo(videoUri, duration, videoMimeType, videoFileName);
+              }}
+              disabled={videoValidity !== 'valid'}
             />
           )}
 

@@ -177,6 +177,20 @@ test('authenticated video upload stores, links, lists, and range-streams a profi
   assert.equal(completedStatus.status, 200);
   assert.equal((await completedStatus.json()).completedKey, storageKey);
 
+  for (const [duration, expectedMessage] of [
+    [29.9, 'Video must be at least 30 seconds long.'],
+    [120.1, 'Video must not exceed 2 minutes.'],
+  ]) {
+    const invalidLink = await fetch(`${baseUrl}/api/profiles/${testProfileId}/intro-video`, {
+      method: 'POST',
+      headers: { ...requestHeaders, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ temp_video_key: storageKey, duration_seconds: duration }),
+    });
+    assert.equal(invalidLink.status, 400);
+    assert.equal((await invalidLink.json()).error, expectedMessage);
+    assert.equal(profile.intro_video_key, null);
+  }
+
   const link = await fetch(`${baseUrl}/api/profiles/${testProfileId}/intro-video`, {
     method: 'POST',
     headers: { ...requestHeaders, 'Content-Type': 'application/json' },

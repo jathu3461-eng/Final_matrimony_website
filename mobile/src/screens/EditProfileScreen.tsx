@@ -17,6 +17,7 @@ import { profileApi } from '@/api/profiles';
 import { uploadsUrl, extractError } from '@/api/client';
 import { Button } from '@/components/Button';
 import { FormField } from '@/components/FormField';
+import { DatePickerField } from '@/components/DatePickerField';
 import { Screen } from '@/components/Screen';
 import { SelectField } from '@/components/SelectField';
 import { SearchableSelect } from '@/components/SearchableSelect';
@@ -302,13 +303,10 @@ export function EditProfileScreen() {
             </Pressable>
           </View>
 
-          <FormField
+          <DatePickerField
             label="Date of Birth"
             value={form.date_of_birth}
             onChangeText={set('date_of_birth')}
-            placeholder="YYYY-MM-DD"
-            keyboardType="numbers-and-punctuation"
-            maxLength={10}
           />
 
           {/* Height */}
@@ -478,13 +476,17 @@ export function EditProfileScreen() {
               setIntroVideoDuration(duration);
               setIntroVideoTempKey(tempKey || null);
               setForm((f) => {
-                const nextStatus = tempKey
-                  ? 'selected'
+                const nextStatus = tempKey || state === 'uploaded'
+                  ? 'uploaded'
                   : state === 'uploading'
                     ? 'uploading'
-                    : f.intro_video_status === 'uploaded'
-                      ? 'uploaded'
-                      : '';
+                    : state === 'valid' || state === 'uploadFailed' || state === 'validating'
+                      ? 'selected'
+                      : state === 'invalid'
+                        ? ''
+                        : f.intro_video_status === 'uploaded'
+                          ? 'uploaded'
+                          : '';
                 return { ...f, intro_video_status: nextStatus };
               });
             }}
