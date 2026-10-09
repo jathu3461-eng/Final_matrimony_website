@@ -58,7 +58,7 @@ export function IntroVideoPlayer({ profileId, status, durationSeconds }: Props) 
   const uri = `${API_BASE_URL.replace(/\/$/, '')}/profiles/${profileId}/intro-video-stream`;
   const meta = status ? STATUS_META[status] : null;
   const toneColor = meta
-    ? { warning: colors.warning ?? '#B7791F', success: colors.success, danger: colors.danger ?? '#E53E3E' }[meta.tone]
+    ? { warning: colors.warning ?? '#B7791F', success: colors.success, danger: colors.error ?? '#E53E3E' }[meta.tone]
     : colors.inkSoft;
   const duration = formatDuration(durationSeconds);
 
