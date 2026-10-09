@@ -102,9 +102,19 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
-    return subscribe('chat:interest', () => {
+    const handleFocus = () => {
+      refreshInteractions().catch(console.error);
+    };
+    window.addEventListener('focus', handleFocus);
+    
+    const unsubscribe = subscribe('chat:interest', () => {
       refreshInteractions().catch(console.error);
     });
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      unsubscribe();
+    };
   }, [subscribe]);
 
   const handleInterestResponse = async (id, status) => {

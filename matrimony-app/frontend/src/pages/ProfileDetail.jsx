@@ -54,6 +54,9 @@ export default function ProfileDetail() {
 
   useEffect(() => {
     load();
+    const handleFocus = () => load();
+    window.addEventListener('focus', handleFocus);
+    
     if (user) {
       api.get('/profiles/mine').then((res) => {
         setMyProfiles(res.data.profiles);
@@ -63,6 +66,10 @@ export default function ProfileDetail() {
         }
       }).catch(() => {});
     }
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+    };
   }, [id, user, load]);
 
   // Build chat thread ID helper
