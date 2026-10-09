@@ -1,7 +1,7 @@
 const { withGradleProperties } = require('@expo/config-plugins');
 
 module.exports = function withAndroidGradlePropertiesFix(config) {
-  return withGradleProperties(config, async (config) => {
+  return withGradleProperties(config, (config) => {
     const props = config.modResults;
 
     // Set compileSdkVersion and targetSdkVersion
@@ -37,3 +37,4 @@ module.exports = function withAndroidGradlePropertiesFix(config) {
     return config;
   });
 };
+

@@ -1,7 +1,7 @@
 const { withMainActivity } = require('@expo/config-plugins');
 
 module.exports = function withAndroidMainActivityCrashFix(config) {
-  return withMainActivity(config, async (config) => {
+  return withMainActivity(config, (config) => {
     const mainActivity = config.modResults;
     const contents = mainActivity.contents;
 
