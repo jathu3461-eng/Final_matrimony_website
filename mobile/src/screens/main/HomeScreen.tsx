@@ -238,6 +238,21 @@ export function HomeScreen() {
                     {i.status === 'accepted' ? 'Accepted' : i.status === 'pending' ? 'Pending' : 'Declined'}
                   </Text>
                 </View>
+                {i.status === 'accepted' && (
+                  <Button 
+                    title="Send Message" 
+                    variant="outline" 
+                    size="sm" 
+                    leftIcon="chatbubbles" 
+                    onPress={() => {
+                      (navigation as any).navigate('ChatThread', {
+                        profileA: i.sender_profile_id,
+                        profileB: i.receiver_profile_id,
+                        otherName: i.receiver_name || 'Profile',
+                      });
+                    }} 
+                  />
+                )}
               </View>
             ))
           )}

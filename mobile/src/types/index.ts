@@ -67,6 +67,7 @@ export interface Profile {
   is_shortlisted?: number;
   interest_status?: string | null;
   interest_direction?: string | null;
+  my_profile_id?: number | null;
   interest_id?: number | null;
   has_intro_video?: boolean;
   intro_video_status?: 'pending' | 'approved' | 'rejected' | null;

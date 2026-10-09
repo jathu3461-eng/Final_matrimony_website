@@ -351,15 +351,16 @@ export function ProfileDetailScreen() {
               </View>
             ) : interestStatus === 'accepted' ? (
               <Button
-                title="Start Chat"
+                title="Send Message"
                 variant="primary"
                 size="md"
                 leftIcon="chatbubble"
-                disabled={!myProfileId}
+                disabled={!(p.my_profile_id || myProfileId)}
                 onPress={() => {
-                  if (!myProfileId) return;
+                  const actualMyProfile = p.my_profile_id || myProfileId;
+                  if (!actualMyProfile) return;
                   navigation.navigate('ChatThread', {
-                    profileA: myProfileId,
+                    profileA: actualMyProfile,
                     profileB: p.id,
                     otherName: p.name,
                   });

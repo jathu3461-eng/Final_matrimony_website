@@ -81,9 +81,9 @@ export function InterestsScreen() {
                       if (item.sender_id) navigation.navigate('ProfileDetail', { profileId: item.sender_id });
                     }}
                     onSendMessage={() => {
-                      if (myProfileId && item.sender_profile_id) {
+                      if (item.receiver_profile_id && item.sender_profile_id) {
                         navigation.navigate('ChatThread', {
-                          profileA: myProfileId,
+                          profileA: item.receiver_profile_id,
                           profileB: item.sender_profile_id,
                           otherName: item.sender_name || 'Profile',
                         });
@@ -109,9 +109,9 @@ export function InterestsScreen() {
                       if (item.receiver_id) navigation.navigate('ProfileDetail', { profileId: item.receiver_id });
                     }}
                     onSendMessage={() => {
-                      if (myProfileId && item.receiver_profile_id) {
+                      if (item.sender_profile_id && item.receiver_profile_id) {
                         navigation.navigate('ChatThread', {
-                          profileA: myProfileId,
+                          profileA: item.sender_profile_id,
                           profileB: item.receiver_profile_id,
                           otherName: item.receiver_name || 'Profile',
                         });

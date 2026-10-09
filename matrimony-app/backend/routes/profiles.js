@@ -48,7 +48,7 @@ async function shouldBlurMedia(viewer, profileRow) {
   const viewerProfiles = await db.all('SELECT id FROM profiles WHERE owner_user_id = ?', [viewer.id]);
   const viewerProfileIds = viewerProfiles.map(p => p.id);
 
-  let interestStatus = null, interestId = null, interestDirection = null, hasMutualAccepted = false;
+  let interestStatus = null, interestId = null, interestDirection = null, hasMutualAccepted = false, myProfileId = null;
 
   if (viewerProfileIds.length > 0) {
     const placeholders = viewerProfileIds.map(() => '?').join(',');
@@ -62,6 +62,7 @@ async function shouldBlurMedia(viewer, profileRow) {
       interestStatus = interaction.status;
       interestId = interaction.id;
       interestDirection = viewerProfileIds.includes(interaction.sender_profile_id) ? 'sent' : 'received';
+      myProfileId = interestDirection === 'sent' ? interaction.sender_profile_id : interaction.receiver_profile_id;
       if (interaction.status === 'accepted') hasMutualAccepted = true;
     }
   }
@@ -72,7 +73,7 @@ async function shouldBlurMedia(viewer, profileRow) {
   return {
     photo: !hasMutualAccepted && profileRow.blur_photo === 1,
     horoscope: !hasMutualAccepted && profileRow.blur_horoscope === 1,
-    interestStatus, interestId, interestDirection, isShortlisted
+    interestStatus, interestId, interestDirection, myProfileId, isShortlisted
   };
 }
 
@@ -234,7 +235,8 @@ router.get('/search', async (req, res) => {
         is_shortlisted: blurState.isShortlisted,
         interest_status: blurState.interestStatus,
         interest_id: blurState.interestId,
-        interest_direction: blurState.interestDirection
+        interest_direction: blurState.interestDirection,
+        my_profile_id: blurState.myProfileId
       };
     }));
 
@@ -320,6 +322,7 @@ router.get('/:id', async (req, res) => {
         photo_blurred: blurState.photo, horoscope_blurred: blurState.horoscope,
         is_shortlisted: blurState.isShortlisted, interest_status: blurState.interestStatus,
         interest_id: blurState.interestId, interest_direction: blurState.interestDirection,
+        my_profile_id: blurState.myProfileId,
         has_intro_video: !!intro_video_key,
         intro_video_status: canViewVideo ? row.intro_video_status : undefined,
         intro_video_duration: canViewVideo ? row.intro_video_duration : undefined
