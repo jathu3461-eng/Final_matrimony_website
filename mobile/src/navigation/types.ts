@@ -12,7 +12,6 @@ export type MainTabParamList = {
   Interests: undefined;
   Chat: undefined;
   Profile: undefined;
-  Notifications: undefined;
 };
 
 export type RootStackParamList = {
