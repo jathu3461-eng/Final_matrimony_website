@@ -161,7 +161,7 @@ export default function AdminDashboard() {
               {section === 'users' && <UsersManagement />}
               {section === 'brokers' && <BrokerApprovals />}
               {section === 'profiles' && <ProfilesVerification />}
-              {section === 'videos' && <video crossOrigin="use-credentials"Reviews />}
+              {section === 'videos' && <VideoReviews />}
               {section === 'settings' && <SiteSettings />}
               {section === 'menu' && <MenuEditor />}
             </motion.div>
