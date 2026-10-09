@@ -3,8 +3,8 @@ import type { NotificationItem } from '@/types';
 
 export const notificationApi = {
   async list(): Promise<NotificationItem[]> {
-    const { data } = await api.get<{ notifications: NotificationItem[] }>('/notifications');
-    return data.notifications;
+    const { data } = await api.get<any>('/notifications');
+    return data.notifications || data.data || [];
   },
 
   async unreadCount(): Promise<number> {

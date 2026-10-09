@@ -10,6 +10,10 @@ import { radius, spacing, typography, layout } from '@/theme';
 import { badgeEvents } from '@/lib/badgeEvents';
 import type { NotificationItem } from '@/types';
 
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '@/navigation/types';
+
 function groupByDate(items: NotificationItem[]): { title: string; data: NotificationItem[] }[] {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -37,6 +41,7 @@ function groupByDate(items: NotificationItem[]): { title: string; data: Notifica
 export function NotificationsScreen() {
   const { colors } = useTheme();
   const [refreshing, setRefreshing] = useState(false);
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const data = useQuery({
     queryKey: ['notifications'],
@@ -105,6 +110,28 @@ export function NotificationsScreen() {
     </View>
   );
 
+  const handleNotificationPress = async (item: NotificationItem) => {
+    if (item.is_read === 0) {
+      await markOneRead(item);
+    }
+    
+    switch (item.type) {
+      case 'interest_received':
+      case 'interest_accepted':
+        navigation.navigate('Main', { screen: 'Interests' });
+        break;
+      case 'message':
+        navigation.navigate('Main', { screen: 'Chat' });
+        break;
+      case 'profile_view':
+        // Maybe navigate to profile if sender_id implies profile
+        // navigation.navigate('ProfileDetail', { profileId: item.sender_id });
+        break;
+      default:
+        break;
+    }
+  };
+
   const renderItem = ({ item }: { item: NotificationItem }) => {
     const isUnread = item.is_read === 0;
     const icon = getNotificationIcon(item.type);
@@ -117,7 +144,7 @@ export function NotificationsScreen() {
           { backgroundColor: colors.surface, borderColor: colors.border },
           isUnread && { borderColor: iconColor, backgroundColor: `${iconColor}08` },
         ]}
-        onPress={() => markOneRead(item)}
+        onPress={() => handleNotificationPress(item)}
       >
         <View style={[styles.iconWrap, { backgroundColor: `${iconColor}15` }]}>
           <Ionicons name={icon as any} size={18} color={iconColor} />
