@@ -25,7 +25,7 @@ export function ProfileCard({ profile, onPress }: ProfileCardProps) {
   const navigation = useNavigation<Nav>();
   const photoUrl = uploadsUrl(profile.main_profile_picture);
 
-  const myProfiles = useQuery({ queryKey: ['profiles'], queryFn: profileApi.getMyProfiles });
+  const myProfiles = useQuery({ queryKey: ['profiles', 'mine'], queryFn: () => profileApi.mine() });
   const isOwnProfile = myProfiles.data?.some((p: any) => p.id === profile.id);
 
   const [isShortlisted, setIsShortlisted] = useState(Boolean(profile.is_shortlisted));
