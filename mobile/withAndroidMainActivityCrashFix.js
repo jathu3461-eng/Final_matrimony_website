@@ -22,3 +22,4 @@ module.exports = function withAndroidMainActivityCrashFix(config) {
     return config;
   });
 };
+
