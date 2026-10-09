@@ -12,6 +12,7 @@
       "backgroundColor": "#e0136a"
     },
     "plugins": [
+      "./withAndroidMainActivityCrashFix.js",
       [
         "expo-image-picker",
         {
