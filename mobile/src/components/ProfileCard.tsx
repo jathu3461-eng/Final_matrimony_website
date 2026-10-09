@@ -26,6 +26,7 @@ export function ProfileCard({ profile, onPress }: ProfileCardProps) {
   const photoUrl = uploadsUrl(profile.main_profile_picture);
 
   const myProfiles = useQuery({ queryKey: ['profiles'], queryFn: profileApi.getMyProfiles });
+  const isOwnProfile = myProfiles.data?.some((p: any) => p.id === profile.id);
 
   const [isShortlisted, setIsShortlisted] = useState(Boolean(profile.is_shortlisted));
   const [shortlistLoading, setShortlistLoading] = useState(false);
@@ -167,48 +168,50 @@ export function ProfileCard({ profile, onPress }: ProfileCardProps) {
       </View>
 
       {/* Action Buttons Row */}
-      <View style={[styles.actionsRow, { borderTopColor: colors.border }]}>
-        <Button
-          title={isShortlisted ? 'Shortlisted' : 'Shortlist'}
-          leftIcon="star"
-          variant={isShortlisted ? 'secondary' : 'outline'}
-          size="sm"
-          onPress={handleToggleShortlist}
-          loading={shortlistLoading}
-          style={styles.actionBtn}
-        />
-        
-        <Button
-          title={
-            interestStatus === 'accepted'
-              ? 'Send Message'
-              : interestStatus === 'pending'
-              ? 'Pending'
-              : interestStatus === 'declined' || interestStatus === 'rejected'
-              ? 'Declined'
-              : 'Interest'
-          }
-          leftIcon={
-            interestStatus === 'accepted'
-              ? 'chatbubble-ellipses'
-              : 'heart'
-          }
-          variant={
-            interestStatus === 'accepted'
-              ? 'primary'
-              : interestStatus === 'pending'
-              ? 'secondary'
-              : (interestStatus === 'declined' || interestStatus === 'rejected')
-              ? 'ghost'
-              : 'primary'
-          }
-          size="sm"
-          disabled={interestStatus === 'pending' || interestStatus === 'declined' || interestStatus === 'rejected'}
-          onPress={handleExpressInterest}
-          loading={interestLoading}
-          style={styles.actionBtn}
-        />
-      </View>
+      {!isOwnProfile && (
+        <View style={[styles.actionsRow, { borderTopColor: colors.border }]}>
+          <Button
+            title={isShortlisted ? 'Shortlisted' : 'Shortlist'}
+            leftIcon="star"
+            variant={isShortlisted ? 'secondary' : 'outline'}
+            size="sm"
+            onPress={handleToggleShortlist}
+            loading={shortlistLoading}
+            style={styles.actionBtn}
+          />
+          
+          <Button
+            title={
+              interestStatus === 'accepted'
+                ? 'Send Message'
+                : interestStatus === 'pending'
+                ? 'Pending'
+                : interestStatus === 'declined' || interestStatus === 'rejected'
+                ? 'Declined'
+                : 'Interest'
+            }
+            leftIcon={
+              interestStatus === 'accepted'
+                ? 'chatbubble-ellipses'
+                : 'heart'
+            }
+            variant={
+              interestStatus === 'accepted'
+                ? 'primary'
+                : interestStatus === 'pending'
+                ? 'secondary'
+                : (interestStatus === 'declined' || interestStatus === 'rejected')
+                ? 'ghost'
+                : 'primary'
+            }
+            size="sm"
+            disabled={interestStatus === 'pending' || interestStatus === 'declined' || interestStatus === 'rejected'}
+            onPress={handleExpressInterest}
+            loading={interestLoading}
+            style={styles.actionBtn}
+          />
+        </View>
+      )}
     </Pressable>
   );
 }
