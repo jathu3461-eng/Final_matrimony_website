@@ -5,6 +5,8 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { uploadsUrl } from '@/api/client';
 import { interestApi } from '@/api/interests';
+import { profileApi } from '@/api/profiles';
+import { useQuery } from '@tanstack/react-query';
 import { useTheme } from '@/theme';
 import { radius, spacing, typography } from '@/theme';
 import { Button } from '@/components/Button';
@@ -22,6 +24,8 @@ export function ProfileCard({ profile, onPress }: ProfileCardProps) {
   const { colors } = useTheme();
   const navigation = useNavigation<Nav>();
   const photoUrl = uploadsUrl(profile.main_profile_picture);
+
+  const myProfiles = useQuery({ queryKey: ['profiles'], queryFn: profileApi.getMyProfiles });
 
   const [isShortlisted, setIsShortlisted] = useState(Boolean(profile.is_shortlisted));
   const [shortlistLoading, setShortlistLoading] = useState(false);
@@ -47,11 +51,15 @@ export function ProfileCard({ profile, onPress }: ProfileCardProps) {
     e?.stopPropagation();
     
     if (interestStatus === 'accepted') {
+      const actualMyProfile = (profile as any).my_profile_id || myProfiles.data?.[0]?.id;
+      if (!actualMyProfile) {
+        Alert.alert('Error', 'Could not determine your profile.');
+        return;
+      }
       navigation.navigate('ChatThread', {
-        receiverId: profile.user_id || profile.id, // we need user_id for chat, but fallback to profile.id
-        receiverName: profile.name,
-        receiverPhoto: photoUrl || undefined,
-        receiverOnline: false,
+        profileA: actualMyProfile,
+        profileB: profile.id,
+        otherName: profile.name,
       });
       return;
     }
