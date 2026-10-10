@@ -2,7 +2,7 @@
 // Messages mirror what the website shows so the mobile app behaves identically.
 
 export const NAME_RE = /^[\p{L}\p{M}][\p{L}\p{M}'. -]*$/u;
-export const USERNAME_RE = /^[a-zA-Z0-9_]{4,150}$/;
+export const USERNAME_RE = /^[a-zA-Z0-9_ ]{4,150}$/;
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export const PHONE_RE = /^\+?\d[\d\s-]{7,20}$/;
 export const PASSWORD_RE = /^(?=.*[A-Z])(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/;
@@ -31,8 +31,7 @@ export function fieldError(
 export function validateUsername(value: string): string | null {
   if (value.length < 4) return 'Enter at least 4 characters';
   if (value.length > 150) return 'Too long (maximum 150 characters)';
-  if (value.includes(' ')) return "Space is not allowed. Don't use spaces.";
-  if (!USERNAME_RE.test(value)) return 'Use only letters, numbers, and underscores';
+  if (!USERNAME_RE.test(value)) return 'Use only letters, numbers, spaces, and underscores';
   return null;
 }
 
@@ -374,7 +373,7 @@ export function validateProfileStep(step: number, form: ProfileForm): Record<str
 
 // Hint text shown when a field is empty (guides the user on the expected format).
 export const HINTS = {
-  username: 'Letters, numbers, and underscores only. No spaces.',
+  username: 'Letters, numbers, spaces, and underscores only.',
   email: 'name@example.com',
   phone: '+14165550198',
   password: 'Min 8 chars, 1 uppercase, 1 special character',
