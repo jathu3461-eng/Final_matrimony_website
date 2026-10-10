@@ -32,7 +32,45 @@ export function DatePickerField({ label, value, onChangeText, onBlur, error, hin
         const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
         const day = String(selectedDate.getDate()).padStart(2, '0');
         onChangeText(`${year}-${month}-${day}`);
+  const handleTextChange = (text: string) => {
+    if (/[\/\.\ ]/.test(text)) {
+      onChangeText(text);
+      return;
     }
+    const cleaned = text.replace(/\D/g, '');
+    const match = cleaned.match(/^(\d{0,4})(\d{0,2})(\d{0,2})$/);
+    if (match) {
+      let formatted = match[1];
+      if (match[2]) formatted += '-' + match[2];
+      if (match[3]) formatted += '-' + match[3];
+      onChangeText(formatted);
+    } else {
+      onChangeText(text.substring(0, 10));
+    }
+  };
+
+  const handleBlur = () => {
+    let finalVal = value.trim().replace(/[\/\.\s_]/g, '-');
+    const parts = finalVal.split('-');
+    if (parts.length === 3) {
+      let y = parts[0];
+      let m = parts[1];
+      let d = parts[2];
+      if (d.length === 4 && y.length <= 2) {
+        const temp = y;
+        y = d;
+        d = temp;
+      }
+      if (y.length === 4) {
+        m = m.padStart(2, '0');
+        d = d.padStart(2, '0');
+        finalVal = `${y}-${m}-${d}`;
+      }
+    }
+    if (finalVal !== value) {
+      onChangeText(finalVal);
+    }
+    if (onBlur) onBlur();
   };
 
   const parsedDate = value && !isNaN(Date.parse(value)) ? new Date(value) : new Date(2000, 0, 1);
@@ -47,8 +85,8 @@ export function DatePickerField({ label, value, onChangeText, onBlur, error, hin
         <TextInput
           style={[styles.input, { color: colors.ink }]}
           value={value}
-          onChangeText={onChangeText}
-          onBlur={onBlur}
+          onChangeText={handleTextChange}
+          onBlur={handleBlur}
           placeholder="YYYY-MM-DD"
           placeholderTextColor={colors.inkFaint}
           keyboardType="numbers-and-punctuation"

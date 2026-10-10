@@ -21,7 +21,7 @@ import { z } from 'zod';
 const router = Router();
 
 const registerSchema = z.object({
-  username: z.string().min(4).max(30).regex(/^[a-zA-Z0-9]+$/),
+  username: z.string().min(4).max(150).regex(/^[a-zA-Z0-9_]+$/),
   email: z.string().email(),
   password: z.string().min(8),
   phoneNumber: z.string().regex(/^\+[1-9]\d{1,14}$/),
@@ -30,7 +30,7 @@ const registerSchema = z.object({
 });
 
 const brokerRegisterSchema = z.object({
-  username: z.string().min(4).max(30).regex(/^[a-zA-Z0-9]+$/),
+  username: z.string().min(4).max(150).regex(/^[a-zA-Z0-9_]+$/),
   email: z.string().email(),
   password: z.string().min(8),
   phoneNumber: z.string().regex(/^\+[1-9]\d{1,14}$/),

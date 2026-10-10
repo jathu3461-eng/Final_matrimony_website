@@ -2,7 +2,7 @@
 // Messages mirror what the website shows so the mobile app behaves identically.
 
 export const NAME_RE = /^[\p{L}\p{M}][\p{L}\p{M}'. -]*$/u;
-export const USERNAME_RE = /^[a-zA-Z0-9_]{4,30}$/;
+export const USERNAME_RE = /^[a-zA-Z0-9_]{4,150}$/;
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export const PHONE_RE = /^\+?\d[\d\s-]{7,20}$/;
 export const PASSWORD_RE = /^(?=.*[A-Z])(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/;
@@ -29,13 +29,15 @@ export function fieldError(
 }
 
 export function validateUsername(value: string): string | null {
-  if (value.length < 2) return 'Enter at least 2 characters';
-  if (value.length > 60) return 'Too long (maximum 60 characters)';
-  if (!NAME_RE.test(value)) return "Letters, spaces, and ' . - only";
+  if (value.length < 4) return 'Enter at least 4 characters';
+  if (value.length > 150) return 'Too long (maximum 150 characters)';
+  if (value.includes(' ')) return "Space is not allowed. Don't use spaces.";
+  if (!USERNAME_RE.test(value)) return 'Use only letters, numbers, and underscores';
   return null;
 }
 
 export function validateEmail(value: string): string | null {
+  if (value.includes(' ')) return "Space is not allowed. Don't use spaces.";
   if (!EMAIL_RE.test(value)) return 'Invalid email format (e.g. name@example.com)';
   return null;
 }
@@ -47,6 +49,7 @@ export function validateEmailOrPhone(value: string): string | null {
 }
 
 export function validatePhone(value: string): string | null {
+  if (value.includes(' ')) return "Space is not allowed. Don't use spaces.";
   if (!PHONE_RE.test(value)) return 'Enter a valid phone number (e.g. +14165550198)';
   return null;
 }
@@ -84,7 +87,21 @@ export function validateName(value: string): string | null {
 }
 
 export function validateDob(value: string): string | null {
-  if (!DOB_RE.test(value)) return 'Invalid format. Expected: YYYY-MM-DD';
+  if (value.includes(' ')) return "Space is not allowed. Don't use spaces.";
+  if (!DOB_RE.test(value)) return 'Invalid format. Expected: YYYY-MM-DD (e.g. 1995-06-15)';
+  
+  const parts = value.split('-');
+  if (parts.length === 3) {
+    const y = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10);
+    const d = parseInt(parts[2], 10);
+    if (m < 1 || m > 12) return 'Month must be between 01 and 12';
+    if (d < 1 || d > 31) return 'Day must be between 01 and 31';
+    
+    const daysInMonth = new Date(y, m, 0).getDate();
+    if (d > daysInMonth) return `Invalid day for the selected month (max ${daysInMonth})`;
+  }
+
   const age = calcAge(value);
   if (age === null) return 'Enter a valid date of birth';
   if (age < 18) return 'Must be 18 years or older';
@@ -357,7 +374,7 @@ export function validateProfileStep(step: number, form: ProfileForm): Record<str
 
 // Hint text shown when a field is empty (guides the user on the expected format).
 export const HINTS = {
-  username: 'Letters, spaces, and \' . - only',
+  username: 'Letters, numbers, and underscores only. No spaces.',
   email: 'name@example.com',
   phone: '+14165550198',
   password: 'Min 8 chars, 1 uppercase, 1 special character',
