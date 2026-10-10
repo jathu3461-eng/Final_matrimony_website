@@ -32,6 +32,9 @@ export function DatePickerField({ label, value, onChangeText, onBlur, error, hin
         const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
         const day = String(selectedDate.getDate()).padStart(2, '0');
         onChangeText(`${year}-${month}-${day}`);
+    }
+  };
+
   const handleTextChange = (text: string) => {
     if (/[\/\.\ ]/.test(text)) {
       onChangeText(text);
